@@ -8,6 +8,7 @@ const {
 describe("ERC20TokenA", function () {
   const MINTER_ROLE = keccak256("MINTER_ROLE");
   const SNAPSHOT_ROLE = keccak256("SNAPSHOT_ROLE");
+  const DEFAULT_ADMIN_ROLE = "0x0000000000000000000000000000000000000000000000000000000000000000";
 
   let tokenA, stakeContract, provider;
   let accounts, admin1, admin2, user1, user2, minter1, minter2 ;
@@ -268,4 +269,36 @@ describe("ERC20TokenA", function () {
     await expect(tokens[i].contract.connect(user2).snapshot()).to.be.revertedWith("");
 
   });
+
+
+  it("grant SNAPSHOT_ROLE by hasSnapshotRole", async function () {
+    let i=0;
+
+    let initialId = await tokens[i].contract.currentSnapshotId();
+
+
+    expect(await tokens[i].contract.hasRole(SNAPSHOT_ROLE, tokens[i].admin.address)).to.be.equal(true);
+    expect(await tokens[i].contract.hasRole(SNAPSHOT_ROLE, user2.address)).to.be.equal(false);
+
+
+    await  tokens[i].contract.connect(tokens[i].admin).grantRole(SNAPSHOT_ROLE, user2.address);
+
+    expect(await tokens[i].contract.hasRole(MINTER_ROLE, user2.address)).to.be.equal(false);
+    expect(await tokens[i].contract.hasRole(SNAPSHOT_ROLE, user2.address)).to.be.equal(true);
+    await tokens[i].contract.connect(user2).snapshot();
+  });
+
+
+  it("grant DEFAULT_ADMIN_ROLE by hasDEFAULT_ADMIN_ROLE", async function () {
+     let i=0;
+     expect(await tokens[i].contract.hasRole(DEFAULT_ADMIN_ROLE, tokens[i].admin.address)).to.be.equal(true);
+     expect(await tokens[i].contract.hasRole(DEFAULT_ADMIN_ROLE, user2.address)).to.be.equal(false);
+     await  tokens[i].contract.connect(tokens[i].admin).grantRole(DEFAULT_ADMIN_ROLE, user2.address);
+
+    expect(await tokens[i].contract.hasRole(DEFAULT_ADMIN_ROLE, user2.address)).to.be.equal(true);
+    await  tokens[i].contract.connect(user2).grantRole(SNAPSHOT_ROLE, user1.address);
+    expect(await tokens[i].contract.hasRole(SNAPSHOT_ROLE, user1.address)).to.be.equal(true);
+    await tokens[i].contract.connect(user1).snapshot();
+  });
+
 });
