@@ -6,12 +6,11 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 import "./ERC165A.sol";
 import "./ERC20ApproveAndCall.sol";
-import "./ERC20Permit.sol";
 import "./ERC20Snapshot.sol";
 
 import "hardhat/console.sol";
 
-contract ERC20A is AccessControl, ERC20, ERC165A, ERC20ApproveAndCall, ERC20Permit, ERC20Snapshot {
+contract ERC20B is AccessControl, ERC20, ERC165A, ERC20ApproveAndCall, ERC20Snapshot {
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant SNAPSHOT_ROLE = keccak256("SNAPSHOT_ROLE");
 
@@ -20,7 +19,7 @@ contract ERC20A is AccessControl, ERC20, ERC165A, ERC20ApproveAndCall, ERC20Perm
         string memory _symbol,
         uint256 initialSupply,
         address _owner
-    ) ERC20(_name, _symbol) ERC165A() ERC20Permit(_name, "1") {
+    ) ERC20(_name, _symbol) ERC165A() {
         _mint(_owner, initialSupply);
 
         _setupRole(DEFAULT_ADMIN_ROLE, _owner);
@@ -109,23 +108,6 @@ contract ERC20A is AccessControl, ERC20, ERC165A, ERC20ApproveAndCall, ERC20Perm
         require(approve(spender, amount));
         _callOnApprove(msg.sender, spender, amount, data);
         return true;
-    }
-
-      /**
-     * @dev See {IERC20Permit-permit}.
-     */
-
-    function permit(
-        address owner,
-        address spender,
-        uint256 value,
-        uint256 deadline,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    ) public virtual  {
-        _permit(owner, spender, value, deadline, v, r, s);
-        _approve(owner, spender, value);
     }
 
     function snapshot() public onlyRole(SNAPSHOT_ROLE) returns (uint256) {

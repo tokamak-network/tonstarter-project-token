@@ -6,26 +6,22 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 import "./ERC165A.sol";
 import "./ERC20ApproveAndCall.sol";
-import "./ERC20Permit.sol";
-import "./ERC20Snapshot.sol";
 
 import "hardhat/console.sol";
 
-contract ERC20A is AccessControl, ERC20, ERC165A, ERC20ApproveAndCall, ERC20Permit, ERC20Snapshot {
+contract ERC20C is AccessControl, ERC20, ERC165A, ERC20ApproveAndCall {
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
-    bytes32 public constant SNAPSHOT_ROLE = keccak256("SNAPSHOT_ROLE");
 
     constructor(
         string memory _name,
         string memory _symbol,
         uint256 initialSupply,
         address _owner
-    ) ERC20(_name, _symbol) ERC165A() ERC20Permit(_name, "1") {
+    ) ERC20(_name, _symbol) ERC165A() {
         _mint(_owner, initialSupply);
 
         _setupRole(DEFAULT_ADMIN_ROLE, _owner);
         _setupRole(MINTER_ROLE, _owner);
-        _setupRole(SNAPSHOT_ROLE, _owner);
 
         _registerInterface(ERC20_RECEIVED);
     }
@@ -109,76 +105,6 @@ contract ERC20A is AccessControl, ERC20, ERC165A, ERC20ApproveAndCall, ERC20Perm
         require(approve(spender, amount));
         _callOnApprove(msg.sender, spender, amount, data);
         return true;
-    }
-
-      /**
-     * @dev See {IERC20Permit-permit}.
-     */
-
-    function permit(
-        address owner,
-        address spender,
-        uint256 value,
-        uint256 deadline,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    ) public virtual  {
-        _permit(owner, spender, value, deadline, v, r, s);
-        _approve(owner, spender, value);
-    }
-
-    function snapshot() public onlyRole(SNAPSHOT_ROLE) returns (uint256) {
-        return _snapshot();
-    }
-
-    /**
-     * @dev Retrieves the balance of `account` at the time `snapshotId` was created.
-     */
-    function balanceOfAt(address account, uint256 snapshotId) public view virtual returns (uint256) {
-        (bool snapshotted, uint256 value) = _balanceOfAt(account, snapshotId);
-        return snapshotted ? value : balanceOf(account);
-    }
-
-    /**
-     * @dev Retrieves the total supply at the time `snapshotId` was created.
-     */
-    function totalSupplyAt(uint256 snapshotId) public view virtual returns (uint256) {
-        (bool snapshotted, uint256 value) = _totalSupplyAt(snapshotId);
-
-        return snapshotted ? value : totalSupply();
-    }
-
-    // Update balance and/or total supply snapshots before the values are modified. This is implemented
-    // in the _beforeTokenTransfer hook, which is executed for _mint, _burn, and _transfer operations.
-    function _beforeTokenTransfer(
-        address from,
-        address to,
-        uint256 amount
-    ) internal virtual override {
-        super._beforeTokenTransfer(from, to, amount);
-
-        if (from == address(0)) {
-            // mint
-            _updateAccountSnapshot(to);
-            _updateTotalSupplySnapshot();
-        } else if (to == address(0)) {
-            // burn
-            _updateAccountSnapshot(from);
-            _updateTotalSupplySnapshot();
-        } else {
-            // transfer
-            _updateAccountSnapshot(from);
-            _updateAccountSnapshot(to);
-        }
-    }
-
-    function _updateAccountSnapshot(address account) private {
-        _updateSnapshot(getAccountBalanceSnapshots(account), balanceOf(account));
-    }
-
-    function _updateTotalSupplySnapshot() private {
-        _updateSnapshot(getTotalSupplySnapshots(), totalSupply());
     }
 
 }
