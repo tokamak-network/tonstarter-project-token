@@ -1,0 +1,21 @@
+{
+  "root": true,
+  "parser": "babel-eslint",
+  "env": {
+    "node": true,
+    "mocha": true
+  },
+  "extends": [
+    "standard",
+    "plugin:jsx-a11y/recommended",
+    "eslint:recommended",
+    "plugin:prettier/recommended"
+  ],
+  "plugins": ["standard", "jsx-a11y", "prettier"],
+  "rules": {
+    "semi": ["error", "always"],
+    "comma-dangle": "off",
+    "no-console": "off",
+    "prettier/prettier": "error"
+  }
+}

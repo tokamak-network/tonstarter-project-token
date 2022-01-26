@@ -1,0 +1,15 @@
+node_modules
+.env
+coverage
+coverage.json
+typechain
+backup
+
+#Hardhat files
+cache
+artifacts
+
+
+.env.example
+README copy.md
+
