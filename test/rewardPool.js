@@ -31,11 +31,13 @@ describe("RewardPool", function () {
   let accounts, admin1, admin2, user1, user2, minter1, minter2 ;
 
   let mintAmount = ethers.BigNumber.from("1"+"0".repeat(20));
-  let tenAmount = ethers.BigNumber.from("1"+"0".repeat(18));
+  let tenAmount = ethers.BigNumber.from("1"+"0".repeat(19));
   let zeroBigNumber = ethers.BigNumber.from("0");
+
 
   let snapshotIds = [];
 
+  /*
   let rewardPools = [
     {
       admin: null,
@@ -73,6 +75,21 @@ describe("RewardPool", function () {
       lastUpdateTime:null,
       totalStakedAmount: null
     }
+  ]
+  */
+  let rewardPools = [
+    {
+      admin: null,
+      contract: null,
+      start: null,
+      end: null,
+      period: 60*60*24*7,
+      totalAllocatedReward: ethers.BigNumber.from("1"+"0".repeat(20)),
+      rewardPerSecond: null,
+      rewardPerStakeAmount: null,
+      lastUpdateTime:null,
+      totalStakedAmount: null
+    },
   ]
 
   let tokens = [
@@ -178,7 +195,7 @@ describe("RewardPool", function () {
   });
 
   it("pass blocks", async function () {
-      ethers.provider.send("evm_increaseTime", [20])
+      ethers.provider.send("evm_increaseTime", [60])
       ethers.provider.send("evm_mine")      // mine the next block
   });
 
@@ -206,8 +223,8 @@ describe("RewardPool", function () {
 
   });
 
-  it("pass time - 1 hour", async function () {
-      ethers.provider.send("evm_increaseTime", [60*60*1])
+  it("pass time - 1 day", async function () {
+      ethers.provider.send("evm_increaseTime", [60*60*24])
       ethers.provider.send("evm_mine")      // mine the next block
   });
 
@@ -216,11 +233,15 @@ describe("RewardPool", function () {
 
       for(let j=0; j< rewardPools.length; j++){
 
-        let reward = await rewardPools[j].contract.getRewardAmount(user2.address);
-        //console.log('reward',reward.toString());
+        ethers.provider.send("evm_increaseTime", [10*j])
+        ethers.provider.send("evm_mine")      // mine the next block
 
+        let reward = await rewardPools[j].contract.getRewardAmount(user2.address);
+        //console.log('reward ',j, reward.toString());
         let amount = null;
         if(reward.gt(zeroBigNumber) ) {
+         // console.log('reward 2 ',reward.toString());
+
           let tx = await rewardPools[j].contract.connect(user2).claim();
           const receipt = await tx.wait();
 
@@ -240,45 +261,120 @@ describe("RewardPool", function () {
 
             }
           }
+
+          let lastUpdateTime = await rewardPools[j].contract.getLastUpdateTime();
+          let start = await rewardPools[j].contract.start();
+          let end = await rewardPools[j].contract.end();
+          let rewardPerSecond = await rewardPools[j].contract.rewardPerSecond();
+          let period = lastUpdateTime.sub(start);
+          let calcAmount = period.mul(rewardPerSecond);
+          expect(await rewardPools[j].contract.totalClaimedAmount()).to.be.lte(calcAmount);
+
+
         }
       }
   });
 
-  it("pass times - 5 hours", async function () {
+
+  it("pass times - 3 days", async function () {
+      ethers.provider.send("evm_increaseTime", [60*60*24*3])
+      ethers.provider.send("evm_mine")      // mine the next block
+  });
+
+  it("APY(Annual Percentage Rate)", async function () {
+      let i=0;
+
+      for(let j=0; j< rewardPools.length; j++){
+
+        let reward = await rewardPools[j].contract.getRewardAmount(user2.address);
+
+        let stakeInfo = await rewardPools[j].contract.stakedInfo(user2.address);
+        let block = await ethers.provider.getBlock();
+
+        let rewardAmount = stakeInfo.claimedAmount.add(reward);
+        let stakedPeriod = block.timestamp - stakeInfo.since.toNumber();
+        // console.log('rewardAmount ',rewardAmount.toString());
+        // console.log('stakedPeriod ',stakedPeriod);
+
+        let apy = (ethers.utils.formatUnits(rewardAmount,18)* (60*60*24*365) / stakedPeriod) / ethers.utils.formatUnits(tenAmount,18)  * 100;
+        console.log('APY ',apy ,"%");
+
+      }
+  });
+
+
+  it("pass time - 1 day ", async function () {
+      ethers.provider.send("evm_increaseTime", [60*60*24])
+      ethers.provider.send("evm_mine")      // mine the next block
+  });
+
+
+  it("claim ", async function () {
+    let i=0;
+
+      for(let j=0; j< rewardPools.length; j++){
+        ethers.provider.send("evm_increaseTime", [10*j])
+        ethers.provider.send("evm_mine")      // mine the next block
+        let reward = await rewardPools[j].contract.getRewardAmount(user2.address);
+
+        let amount = null;
+        if(reward.gt(zeroBigNumber) ) {
+          let tx = await rewardPools[j].contract.connect(user2).claim();
+          const receipt = await tx.wait();
+
+          for (let i = 0; i < receipt.events.length; i++) {
+            if (
+              receipt.events[i].topics.length > 0 &&
+              receipt.events[i].topics[0] == topic0Claimed
+            ) {
+              const eventObj = Web3EthAbi.decodeLog(
+                abiClaimed,
+                receipt.events[i].data,
+                receipt.events[i].topics.slice(1)
+              );
+
+              expect(user2.address).to.be.equal(eventObj.from);
+              expect(reward).to.be.lte(ethers.BigNumber.from(eventObj.amount));
+              ///console.log('eventObj.amount',eventObj.amount);
+            }
+          }
+        }
+      }
+  });
+
+
+  it("APY(Annual Percentage Rate)", async function () {
+      let i=0;
+
+      for(let j=0; j< rewardPools.length; j++){
+
+        let reward = await rewardPools[j].contract.getRewardAmount(user2.address);
+
+        let stakeInfo = await rewardPools[j].contract.stakedInfo(user2.address);
+
+        let block = await ethers.provider.getBlock();
+
+        let rewardAmount = stakeInfo.claimedAmount.add(reward);
+        let stakedPeriod = block.timestamp - stakeInfo.since.toNumber();
+
+        let apy = (ethers.utils.formatUnits(rewardAmount,18)* (60*60*24*365) / stakedPeriod) / ethers.utils.formatUnits(tenAmount,18)  * 100;
+        console.log('APY ',apy ,"%");
+
+      }
+  });
+
+
+  it("pass time - 5 hour ", async function () {
       ethers.provider.send("evm_increaseTime", [60*60*5])
       ethers.provider.send("evm_mine")      // mine the next block
   });
 
-  it("APY(Annual Percentage Rate)", async function () {
-      let i=0;
-
-      for(let j=0; j< rewardPools.length; j++){
-
-        let reward = await rewardPools[j].contract.getRewardAmount(user2.address);
-
-        let stakeInfo = await rewardPools[j].contract.stakedInfo(user2.address);
-        let block = await ethers.provider.getBlock();
-
-        let rewardAmount = stakeInfo.claimedAmount.add(reward);
-        let stakedPeriod = block.timestamp - stakeInfo.since.toNumber();
-
-        let apy = (ethers.utils.formatUnits(rewardAmount,18)* (60*60*24*365) / stakedPeriod) / ethers.utils.formatUnits(tenAmount,18)  * 100;
-        console.log('APY ',apy ,"%");
-
-      }
-  });
-
-
-  it("pass time - 1 day ", async function () {
-      ethers.provider.send("evm_increaseTime", [60*60*24])
-      ethers.provider.send("evm_mine")      // mine the next block
-  });
-
   it("claim ", async function () {
     let i=0;
 
       for(let j=0; j< rewardPools.length; j++){
-
+        ethers.provider.send("evm_increaseTime", [10*j])
+        ethers.provider.send("evm_mine")      // mine the next block
         let reward = await rewardPools[j].contract.getRewardAmount(user2.address);
         //console.log('reward',reward.toString());
 
@@ -308,66 +404,11 @@ describe("RewardPool", function () {
       }
   });
 
-
-  it("APY(Annual Percentage Rate)", async function () {
-      let i=0;
-
-      for(let j=0; j< rewardPools.length; j++){
-
-        let reward = await rewardPools[j].contract.getRewardAmount(user2.address);
-
-        let stakeInfo = await rewardPools[j].contract.stakedInfo(user2.address);
-
-        let block = await ethers.provider.getBlock();
-
-        let rewardAmount = stakeInfo.claimedAmount.add(reward);
-        let stakedPeriod = block.timestamp - stakeInfo.since.toNumber();
-
-        let apy = (ethers.utils.formatUnits(rewardAmount,18)* (60*60*24*365) / stakedPeriod) / ethers.utils.formatUnits(tenAmount,18)  * 100;
-        console.log('APY ',apy ,"%");
-
-      }
-  });
-
-
-  it("pass time - 1 day ", async function () {
-      ethers.provider.send("evm_increaseTime", [60*60*24])
+  it("pass time - 30 day ", async function () {
+      ethers.provider.send("evm_increaseTime", [60*60*30])
       ethers.provider.send("evm_mine")      // mine the next block
   });
 
-  it("claim ", async function () {
-    let i=0;
-
-      for(let j=0; j< rewardPools.length; j++){
-
-        let reward = await rewardPools[j].contract.getRewardAmount(user2.address);
-        //console.log('reward',reward.toString());
-
-        let amount = null;
-        if(reward.gt(zeroBigNumber) ) {
-          let tx = await rewardPools[j].contract.connect(user2).claim();
-          const receipt = await tx.wait();
-
-          for (let i = 0; i < receipt.events.length; i++) {
-            if (
-              receipt.events[i].topics.length > 0 &&
-              receipt.events[i].topics[0] == topic0Claimed
-            ) {
-              const eventObj = Web3EthAbi.decodeLog(
-                abiClaimed,
-                receipt.events[i].data,
-                receipt.events[i].topics.slice(1)
-              );
-
-              expect(user2.address).to.be.equal(eventObj.from);
-              expect(reward).to.be.lte(ethers.BigNumber.from(eventObj.amount));
-              ///console.log('eventObj.amount',eventObj.amount);
-
-            }
-          }
-        }
-      }
-  });
 
   it("withdraw ", async function () {
     let i=0;
@@ -379,7 +420,7 @@ describe("RewardPool", function () {
         expect(balanceOfContract).to.be.gte(stakeInfo.amount);
 
 
-        let tx = await rewardPools[j].contract.connect(user2).withdraw();
+        let tx = await rewardPools[j].contract.connect(user2).withdraw(user2.address);
         const receipt = await tx.wait();
 
         for (let i = 0; i < receipt.events.length; i++) {

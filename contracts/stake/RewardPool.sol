@@ -40,6 +40,11 @@ contract RewardPool is AccessControl {
     uint256 public totalStakedAmount ;
     uint256 constant DIV_CORRECTION = 10e18;
 
+    uint256 public initialDebt ;
+    uint256 public initialDebtPeriod ;
+    uint256 public totalClaimedAmount;
+    uint256 private _guardCounter;
+
     modifier nonZeroAddress(address addr) {
         require(addr != address(0), 'address is zero');
         _;
@@ -48,6 +53,13 @@ contract RewardPool is AccessControl {
     modifier nonZero(uint256 val) {
         require(val > 0 , 'zero vaule');
         _;
+    }
+
+    modifier nonReentrant() {
+        _guardCounter += 1;
+        uint256 localCounter = _guardCounter;
+        _;
+        require(localCounter == _guardCounter);
     }
 
     event Claimed(address indexed from, uint256 amount);
@@ -104,6 +116,7 @@ contract RewardPool is AccessControl {
         updateReward();
         totalStakedAmount += amount;
 
+       // console.log('_stake totalStakedAmount %s',totalStakedAmount);
         StakeInfo storage stakeInfo = stakedInfo[sender];
         stakeInfo.amount += amount;
         stakeInfo.debtReward += (rewardPerStakeAmount * amount);
@@ -112,68 +125,93 @@ contract RewardPool is AccessControl {
 
     function getRewardAmount(address sender) public view returns (uint256)
     {
-        // console.log('getRewardAmount sender %s', sender);
-        // console.log('getRewardAmount start %s', start);
-        // console.log('getRewardAmount block.timestamp %s', block.timestamp);
 
         if(block.timestamp < start) return 0;
-        uint256 period =  Math.min(block.timestamp, end) - start;
-        //console.log('getRewardAmount period %s', period);
+        uint256 _lastUpdate = getLastUpdateTime() ;
+        // console.log('getRewardAmount _lastUpdate %s',_lastUpdate);
+        // console.log('getRewardAmount rewardPerSecond %s',rewardPerSecond);
+
+        uint256 fixedPeriod =  _lastUpdate - start;
+        if(initialDebtPeriod > 0 && initialDebtPeriod <= fixedPeriod) fixedPeriod -= initialDebtPeriod;
+        uint256 nonUpdatedPeriod = 0;
+
+        if(Math.min(block.timestamp, end) > _lastUpdate)
+            nonUpdatedPeriod = Math.min(block.timestamp, end) - _lastUpdate ;
 
 
         StakeInfo storage stakeInfo = stakedInfo[sender];
-        //console.log('getRewardAmount stakeInfo.amount %s', stakeInfo.amount);
+        // console.log('getRewardAmount stakeInfo.amount %s', stakeInfo.amount);
+        // console.log('getRewardAmount nonUpdatedPeriod %s',nonUpdatedPeriod);
+        // console.log('getRewardAmount totalStakedAmount %s',totalStakedAmount);
 
         if(stakeInfo.amount > 0 ){
+            uint256 fixedReward = rewardPerStakeAmount * stakeInfo.amount;
+            uint256 mod1 = 0;
+            //if(nonUpdatedPeriod > 0 && totalStakedAmount > 0 ){
+            if(nonUpdatedPeriod > 0 && totalStakedAmount > 0  ){
+                //mod1 = DIV_CORRECTION * rewardPerSecond / totalStakedAmount;
+                mod1 = DIV_CORRECTION * rewardPerSecond ;
+                mod1 = mod1 * nonUpdatedPeriod ;
+                //mod1 = mod1/DIV_CORRECTION;
+                mod1 = mod1/(totalStakedAmount*DIV_CORRECTION);
 
-            uint256 mod1 = DIV_CORRECTION * rewardPerSecond / totalStakedAmount;
-            mod1 = mod1 * period * stakeInfo.amount;
-            mod1 = mod1/DIV_CORRECTION;
-            //console.log('getRewardAmount mod1 %s', mod1);
+                mod1 = mod1 * stakeInfo.amount ;
+            }
 
-            return ( mod1 - stakeInfo.debtReward - stakeInfo.claimedAmount);
+            // console.log('getRewardAmount fixedReward %s',fixedReward);
+            // console.log('getRewardAmount nonUpdatedReward %s',mod1);
+
+            uint256 reward = (fixedReward + mod1) - stakeInfo.debtReward - stakeInfo.claimedAmount;
+
+            // console.log('getRewardAmount reward %s',reward);
+
+            return reward;
         } else {
             return 0;
         }
     }
 
-    function claim() public {
-        updateReward();
-        uint256 reward = getRewardAmount(msg.sender);
-        require(reward > 0, "reward is zero");
-         _claim(reward);
-        emit Claimed(msg.sender, reward);
+    function claim() public  {
+        if(block.timestamp > end){
+            withdraw(msg.sender);
+        } else {
+            updateReward();
+            uint256 reward = getRewardAmount(msg.sender);
+            require(reward > 0, "reward is zero");
+            StakeInfo storage stakeInfo = stakedInfo[msg.sender];
+            stakeInfo.claimedAmount += reward;
+            stakeInfo.lastClaimedTime = block.timestamp;
+            totalClaimedAmount += reward;
+            IERC20(stakeToken).transfer(msg.sender, reward);
+            emit Claimed(msg.sender, reward);
+        }
     }
 
-    function _claim(uint256 reward) internal {
-        StakeInfo storage stakeInfo = stakedInfo[msg.sender];
-        stakeInfo.claimedAmount += reward;
-        stakeInfo.lastClaimedTime = block.timestamp;
+    function withdraw(address user) public  {
 
-        IERC20(stakeToken).transfer(msg.sender, reward);
-    }
-
-    function withdraw() public {
-        updateReward();
-        uint256 reward = getRewardAmount(msg.sender);
-
-        StakeInfo storage stakeInfo = stakedInfo[msg.sender];
+        StakeInfo storage stakeInfo = stakedInfo[user];
+        if(block.timestamp < end){
+            require(user == msg.sender, "you are not sender");
+        } else {
+            require(user != address(0), "user zero");
+        }
         require(stakeInfo.amount > 0, "not staked");
+        updateReward();
+        uint256 reward = getRewardAmount(user);
+        totalClaimedAmount += reward;
 
         uint256 amount = stakeInfo.amount + reward;
+        require(IERC20(stakeToken).balanceOf(address(this)) >= amount, "balanceOf(this) is insufficient");
 
-        delete stakedInfo[msg.sender];
+        delete stakedInfo[user];
 
-        IERC20(stakeToken).transfer(msg.sender, amount);
-        emit Withdrawal(msg.sender, amount);
+        IERC20(stakeToken).transfer(user, amount);
+        emit Withdrawal(user, amount);
     }
 
     function getLastUpdateTime()
         public view returns (uint256)
     {
-        // console.log('getLastUpdateTime start %s', start);
-        // console.log('getLastUpdateTime lastUpdateTime %s', lastUpdateTime);
-        // console.log('getLastUpdateTime block.timestamp %s', block.timestamp);
 
         if(start < block.timestamp) {
             return Math.min(Math.max(start, lastUpdateTime), end);
@@ -187,30 +225,56 @@ contract RewardPool is AccessControl {
         public view returns (uint256)
     {
         uint256 lastTime = getLastUpdateTime();
-        // console.log('getPeriodForUpdateReward lastTime %s', lastTime);
-        // console.log('getPeriodForUpdateReward block.timestamp %s', block.timestamp);
-        // console.log('getPeriodForUpdateReward end %s', end);
+        // console.log('getPeriodForUpdateReward lastTime %s', lastTime );
+        // console.log('getPeriodForUpdateReward block.timestamp  end %s %s ', block.timestamp,  end);
 
-        if(lastTime > 0 && block.timestamp < end) {
-            return (block.timestamp - lastTime);
-        } else if (lastTime >= end) {
+        if(lastTime < block.timestamp && lastTime < end) {
+            return (Math.min(block.timestamp, end) - lastTime);
+        } else {
             return 0;
         }
-
     }
 
     function updateReward()
-        public
+        public  nonReentrant
     {
-        if(lastUpdateTime < block.timestamp ) {
+        // console.log('updateReward');
+        // console.log('updateReward totalStakedAmount %s',totalStakedAmount);
+        // console.log('updateReward lastUpdateTime %s',lastUpdateTime);
+
+        if(lastUpdateTime < block.timestamp && start < block.timestamp ) {
             uint256 period = getPeriodForUpdateReward();
-            if(period > 0 && totalStakedAmount > 0 ){
-                uint256 mod1 = DIV_CORRECTION * rewardPerSecond / totalStakedAmount;
-                mod1 = mod1 * period ;
-                mod1 = mod1/DIV_CORRECTION;
-                rewardPerStakeAmount += mod1;
+            // console.log('updateReward period %s' , period, start, block.timestamp );
+
+            if(period > 0){
+                 uint256 mod1 = 0;
+                if(totalStakedAmount == 0 ){
+                    mod1 = DIV_CORRECTION * rewardPerSecond * period ;
+                    mod1 = mod1/DIV_CORRECTION;
+                } else {
+                    mod1 = DIV_CORRECTION * rewardPerSecond / totalStakedAmount;
+
+                    mod1 = mod1 * period ;
+                    mod1 = mod1/DIV_CORRECTION;
+                }
+                // console.log('updateReward lastUpdateTime %s ',lastUpdateTime );
+                // console.log('updateReward rewardPerStakeAmount %s ',rewardPerStakeAmount );
+
+                if(lastUpdateTime == 0 || totalStakedAmount == 0 ){
+                    initialDebt += mod1;
+                    initialDebtPeriod += period;
+                } else {
+                    rewardPerStakeAmount += mod1;
+                }
+
                 lastUpdateTime = block.timestamp;
+                // console.log('updateReward initialDebt %s ',initialDebt );
+                // console.log('updateReward initialDebtPeriod %s ',initialDebtPeriod );
+                // console.log('updateReward rewardPerStakeAmount %s ',rewardPerStakeAmount );
+                // console.log('updateReward lastUpdateTime %s ',lastUpdateTime );
+
             }
+
         }
     }
 
