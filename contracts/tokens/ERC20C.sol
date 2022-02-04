@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "./ERC165A.sol";
 import "./ERC20ApproveAndCall.sol";
 
-//import "hardhat/console.sol";
+import "hardhat/console.sol";
 
 contract ERC20C is AccessControl, ERC20, ERC165A, ERC20ApproveAndCall {
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
