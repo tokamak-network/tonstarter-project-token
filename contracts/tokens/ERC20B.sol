@@ -8,7 +8,7 @@ import "./ERC165A.sol";
 import "./ERC20ApproveAndCall.sol";
 import "./ERC20Snapshot.sol";
 
-import "hardhat/console.sol";
+//import "hardhat/console.sol";
 
 contract ERC20B is AccessControl, ERC20, ERC165A, ERC20ApproveAndCall, ERC20Snapshot {
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
