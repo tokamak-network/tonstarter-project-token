@@ -88,8 +88,8 @@ contract TokenDividendPool is
         uint256 startSnapshotIndex = distr.nonClaimedSnapshotIndex[_account];
         uint256 endSnapshotIndex = distr.snapshots.length;
         return _calculateClaim(
-            _account,
             _token,
+            _account,
             startSnapshotIndex,
             endSnapshotIndex
         );
@@ -149,7 +149,7 @@ contract TokenDividendPool is
         IERC20(_token).transfer(msg.sender, amountToClaim);
 
         distr.nonClaimedSnapshotIndex[_account] = _endSnapshotIndex;
-        distr.totalDistribution = distr.totalDistribution - amountToClaim;
+        distr.lastBalance -= amountToClaim;
         emit Claim(_token, amountToClaim, _endSnapshotIndex);
     }
 
@@ -171,7 +171,6 @@ contract TokenDividendPool is
             uint256 snapshotId = distr.snapshots[snapshotIndex].id;
             uint256 totalDividendAmount = distr.snapshots[snapshotIndex].totalDividendAmount;
             accumulated +=  _calculateClaimPerSnapshot( 
-                                _token,
                                 _account,
                                 snapshotId,
                                 totalDividendAmount
@@ -182,7 +181,6 @@ contract TokenDividendPool is
 
     /// @dev Calculates claim portion
     function _calculateClaimPerSnapshot(
-        address _token,
         address _account,
         uint256 _snapshotId,
         uint256 _totalDividendAmount
