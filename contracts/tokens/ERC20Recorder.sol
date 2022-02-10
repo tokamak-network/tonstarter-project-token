@@ -7,8 +7,8 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 contract ERC20Recorder is ERC20, ERC20Snapshot, AccessControl {
     bytes32 public constant SNAPSHOT_ROLE = keccak256("SNAPSHOT_ROLE");
-    bytes32 public constant MINTER_ROLE = keccak256("SNAPSHOT_ROLE");
-    bytes32 public constant BURNER_ROLE = keccak256("SNAPSHOT_ROLE");
+    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
+    bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");
     
     constructor(
         string memory _name,
@@ -33,6 +33,21 @@ contract ERC20Recorder is ERC20, ERC20Snapshot, AccessControl {
         uint256 amount
     ) internal virtual override(ERC20, ERC20Snapshot) {
         super._beforeTokenTransfer(from, to, amount);
+    }
+
+    /**
+     * @dev Mints `amount` tokens from the `account`.
+     */
+    function mintBatch(address[] memory accounts, uint256[] memory amounts)
+        external
+        onlyRole(MINTER_ROLE)
+        returns (bool)
+    {
+        require(accounts.length == amounts.length, "No same length");
+        for (uint256 i = 0; i < accounts.length; ++i) {
+            _mint(accounts[i], amounts[i]);
+        }
+        return true;
     }
 
     /**
