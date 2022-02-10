@@ -22,5 +22,5 @@ interface ITokenDividendPool {
     function claimable(address _token, address _account) external view returns (uint256);
     
     /// @dev Returns claimable amount from `_timeStart` to `_timeEnd`
-    function claimableForPeriod(address _token, address _account, uint256 _timeStart, uint256 _timeEnd) external view returns (uint256);
+    function claimableUpTo(address _token, address _account, uint256 _endSnapshotIndex) external view returns (uint256);
 }

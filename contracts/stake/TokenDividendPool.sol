@@ -47,7 +47,7 @@ contract TokenDividendPool is
 
     /// @inheritdoc ITokenDividendPool
     function claimUpTo(address _token, uint256 _endSnapshotIndex) public override {
-        require(claimableForPeriod(_token, msg.sender, 0, _endSnapshotIndex) > 0, "Claimable amount is zero");
+        require(claimableUpTo(_token, msg.sender, _endSnapshotIndex) > 0, "Claimable amount is zero");
         _claimUpTo(_token, msg.sender, _endSnapshotIndex);
     }
 
@@ -119,16 +119,17 @@ contract TokenDividendPool is
     }
 
     /// @inheritdoc ITokenDividendPool
-    function claimableForPeriod(
+    function claimableUpTo(
         address _token,
         address _account,
-        uint256 _startSnapshotIndex,
         uint256 _endSnapshotIndex
     ) public view override returns (uint256) {
+        LibTokenDividendPool.Distribution storage distr = distributions[_token];
+        uint256 startSnapshotIndex = distr.nonClaimedSnapshotIndex[_account];
         return _calculateClaim(
             _token,
             _account,
-            _startSnapshotIndex,
+            startSnapshotIndex,
             _endSnapshotIndex
         );
     }
