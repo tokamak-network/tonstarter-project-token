@@ -2,27 +2,31 @@
 const { expect } = require("chai");
 
 describe("TokenDividendPool", function() {
-    let admin, user1, user2;
+    let admin, distributor, depositManager, user1, user2, user3, user4;
     let tokenA;
     let dividendPool;
-
     let erc20;
-
-    
     const totalSupply = 100;
 
     before(async () => {
-        [admin, distributor, user1, user2, user3, user4] = await ethers.getSigners();
+        [
+            admin,
+            distributor,
+            depositManager,
+            user1,
+            user2,
+            user3,
+            user4
+        ] = await ethers.getSigners();
 
-        const TokenAContract = await ethers.getContractFactory("ERC20A");
+        const TokenAContract = await ethers.getContractFactory("ERC20Recorder");
         tokenA = await TokenAContract.connect(admin).deploy(
             "TokenA",
             "TA",
-            totalSupply,
-            admin.address
+            admin.address,
+            depositManager.address
         );
         await tokenA.deployed();
-
 
         const TokenDividendPoolImplContract = await ethers.getContractFactory("TokenDividendPool");
         const dividendPoolImpl = await TokenDividendPoolImplContract.connect(admin).deploy();
@@ -45,11 +49,11 @@ describe("TokenDividendPool", function() {
     const makeBalance = async (token, user, amount) => {
         // empty balance
         const balance = await token.balanceOf(user.address);
-        await (await token.connect(user).transfer(admin.address, balance)).wait();
+        await (await token.connect(depositManager).burnFrom(user.address, balance)).wait();
         expect(await token.balanceOf(user.address)).to.be.eq(0);
 
         // send amount
-        await (await token.connect(admin).transfer(user.address, amount)).wait();
+        await (await token.connect(depositManager).mint(user.address, amount)).wait();
         expect(await token.balanceOf(user.address)).to.be.eq(amount);
     };
 
@@ -101,10 +105,10 @@ describe("TokenDividendPool", function() {
         const amount2 = 5;
         await makeBalance(tokenA, user2, amount2);
 
-        const amount3 = 5;
+        const amount3 = 1;
         await makeBalance(tokenA, user3, amount3);
 
-        const amount4 = 10;
+        const amount4 = 1;
         await makeBalance(tokenA, user4, amount4);
     });
 
@@ -114,9 +118,9 @@ describe("TokenDividendPool", function() {
     });
 
     it("should check claimable amount and claim", async () => {
-        await claim(user1, 3000000, erc20);
-        await claim(user2, 5000000, erc20);
-        await claim(user3, 5000000, erc20);
+        await claim(user1, 30000000, erc20);
+        await claim(user2, 50000000, erc20);
+        await claim(user3, 10000000, erc20);
         await claim(user4, 10000000, erc20);
     });    
 })
