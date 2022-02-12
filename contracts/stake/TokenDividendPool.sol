@@ -76,11 +76,15 @@ contract TokenDividendPool is
 
         uint256 snapshotId = IIERC20(erc20DividendAddress).snapshot();
         distr.snapshots.push(
-            LibTokenDividendPool.SnapshotInfo(snapshotId, _amount)
+            LibTokenDividendPool.SnapshotInfo(snapshotId, increment)
         );
         emit Distribute(_token, _amount);
     }
 
+    function totalDistribution(address _token) public view returns (uint256) {
+        LibTokenDividendPool.Distribution storage distr = distributions[_token];
+        return distr.totalDistribution;
+    }
 
     /// @inheritdoc ITokenDividendPool
     function claimable(address _token, address _account) public view override returns (uint256) {

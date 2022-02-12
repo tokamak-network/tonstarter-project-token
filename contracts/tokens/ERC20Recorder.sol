@@ -83,6 +83,9 @@ contract ERC20Recorder is ERC20, ERC20Snapshot, AccessControl {
         _burn(_msgSender(), amount);
     }
 
+    function currentSnapshotId() public view returns (uint256) {
+        return _getCurrentSnapshotId();
+    }
 
     function snapshot() public onlyRole(SNAPSHOT_ROLE) returns (uint256) {
         return _snapshot();
