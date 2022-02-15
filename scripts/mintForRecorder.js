@@ -26,13 +26,14 @@ async function main() {
   let accounts = [];
   let amounts = [];
   for (const staker of stakers) {
-    let totalStaked = 0;
+    let totalStaked = ethers.BigNumber.from(0);
     for (const layer2 of layer2s) {
       if (!stakesOfAllUsers[layer2]) {
         continue;
       }
-      if (stakesOfAllUsers[layer2][staker])
-        totalStaked += ethers.BigNumber.from(stakesOfAllUsers[layer2][staker]);
+      if (stakesOfAllUsers[layer2][staker]) {
+        totalStaked = totalStaked.add(ethers.BigNumber.from(stakesOfAllUsers[layer2][staker]));
+      }
     }
 
     if (totalStaked == 0) {
@@ -41,9 +42,9 @@ async function main() {
     
     accounts.push(staker);
     amounts.push(totalStaked);
-    
     if (accounts.length == 100) {
-      console.log({ accounts, amounts });
+      console.log(accounts.length);
+      console.log(amounts.length);
       await (await ERC20Recorder.connect(admin).mintBatch(accounts, amounts)).wait();
       accounts = [];
       amounts = [];
@@ -51,7 +52,8 @@ async function main() {
   }
 
   if (accounts.length > 0) {
-    console.log({ accounts, amounts });
+    console.log(accounts.length);
+    console.log(amounts.length);
     await (await ERC20Recorder.connect(admin).mintBatch(accounts, amounts)).wait();
   }
 }
