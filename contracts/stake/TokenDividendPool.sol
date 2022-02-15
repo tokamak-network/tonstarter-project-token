@@ -76,7 +76,7 @@ contract TokenDividendPool is
 
         uint256 snapshotId = IIERC20(erc20DividendAddress).snapshot();
         distr.snapshots.push(
-            LibTokenDividendPool.SnapshotInfo(snapshotId, increment)
+            LibTokenDividendPool.SnapshotInfo(snapshotId, increment, block.timestamp)
         );
         emit Distribute(_token, _amount);
     }

@@ -6,6 +6,7 @@ library LibTokenDividendPool {
     struct SnapshotInfo {
         uint256 id;
         uint256 totalDividendAmount;
+        uint256 timestamp;
     }
 
     struct Distribution {
