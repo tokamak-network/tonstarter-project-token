@@ -12,6 +12,9 @@ module.exports = {
   networks: {
     hardhat: {
       chainId: 31337,
+      forking: {
+        url: "https://eth-mainnet.alchemyapi.io/v2/OTsGtP11BIhYl0_cldJ44uKtUvPTlClg",
+      }
     },
     rinkeby: {
       url: `https://rinkeby.infura.io/v3/${process.env.INFURA_API_KEY}`,
