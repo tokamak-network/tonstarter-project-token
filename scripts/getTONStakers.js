@@ -31,6 +31,7 @@ async function getTONStakers() {
   const filter = {
     address: "0x56E465f654393fa48f007Ed7346105c7195CEe43",
     fromBlock: 0,
+    toBlock: 14215307,
     topics: [ethers.utils.id("Deposited(address,address,uint256)")]
   };
   const txs = await ethers.provider.getLogs(filter);
@@ -46,7 +47,9 @@ async function getTONStakers() {
   }
   console.log({ stakers });
   console.log("length: ", stakers.length);
-  await fs.writeFileSync("./data/stakers.json", JSON.stringify(stakers));
+  const stakersUnique = stakers.filter((v, idx, self) => self.indexOf(v) === idx);
+  console.log("length: ", stakersUnique.length);
+  await fs.writeFileSync("./data/stakers.json", JSON.stringify(stakersUnique));
   return stakers;
 }
 
@@ -81,8 +84,10 @@ async function getStakeOfAllUsers() {
 }
 
 async function main() {
-  await getStakeOfAllUsers();
-
+  // await getStakeOfAllUsers();
+  // await getLayer2s();
+  await getTONStakers();
+  // await getStakeOfAllUsers();
 }
 
 main()

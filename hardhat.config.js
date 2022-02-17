@@ -13,7 +13,8 @@ module.exports = {
     hardhat: {
       chainId: 31337,
       forking: {
-        url: "https://eth-mainnet.alchemyapi.io/v2/OTsGtP11BIhYl0_cldJ44uKtUvPTlClg",
+        url: "https://mainnet.infura.io/v3/27113ffbad864e8ba47c7d993a738a10",
+        blockNumber: 14215307,
       }
     },
     rinkeby: {
