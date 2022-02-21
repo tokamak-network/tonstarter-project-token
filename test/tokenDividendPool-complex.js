@@ -1,10 +1,7 @@
 
 const chai = require("chai");
-const { solidity } = require("n");
 
 const { expect } = chai;
-chai.use(solidity);
-
 
 describe("TokenDividendPool", function() {
     let admin, distributor, depositManager, user1, user2, user3, user4, user5, user6;
@@ -106,8 +103,8 @@ describe("TokenDividendPool", function() {
     }
 
     // helper function
-    const getAvailableClaims = async (user, erc20) => {
-        const claims = await dividendPool.connect(admin).getAvailableClaims(user.address);
+    const getAvailableClaims = async (userAddress) => {
+        const claims = await dividendPool.connect(admin).getAvailableClaims(userAddress);
         return claims.claimableAmounts.map(
             (_, idx) => ({ amount: claims.claimableAmounts[idx], token: claims.claimableTokens[idx] })
         );
@@ -125,6 +122,7 @@ describe("TokenDividendPool", function() {
 
     // calculateClaimAndCheck 
     const calculateClaimAndCheck = async () => {
+        const allAvailableClaims = {};
         for (const erc20Address in distributeInfos) {
             const distributions = distributeInfos[erc20Address];
             const claimableInfo = {};
@@ -143,6 +141,8 @@ describe("TokenDividendPool", function() {
                         claimableInfo[user.address] += claimableCalculated;
                     else
                         claimableInfo[user.address] = claimableCalculated;
+                    
+
                 }
             }
 
@@ -150,10 +150,73 @@ describe("TokenDividendPool", function() {
                 const claimableExpected = claimableInfo[userAddress];
                 const claimable = await dividendPool.claimable(erc20Address, userAddress);
                 expect(claimable).to.be.eq(claimableExpected);
+                if (!(userAddress in allAvailableClaims)) {
+                    allAvailableClaims[userAddress] = {};
+                }
+                allAvailableClaims[userAddress][erc20Address] = claimableExpected;
             }
         }
-    }
 
+
+        for (const userAddress in allAvailableClaims) {
+            const availableClaims = await getAvailableClaims(userAddress);
+            const availableClaimsExpected = allAvailableClaims[userAddress];
+            for (const claim of availableClaims) {
+                const { amount, token } = claim;
+                expect(amount).to.be.eq(availableClaimsExpected[token]);
+            }            
+        }
+
+    }
+    
+    const claimBatch = async (thisUser, tokens) => {
+        const allClaimables = {};
+        const validTokens = [];
+        for (const erc20 of tokens) {
+            const distributions = distributeInfos[erc20.address];
+            let claimableExpected = 0;
+            for (const { distributeAmount, stateInfo, snapshotId } of distributions) {
+                let userIdx = -1;
+                for (let i = 0; i < stateInfo.length; ++i) {
+                    if (thisUser.address == stateInfo[i].user.address) {
+                        userIdx = i;
+                        break;
+                    }
+                }
+                const totalAmount = getTotalAmount(stateInfo);
+                expect(await tokenRecorder.totalSupplyAt(snapshotId)).to.be.eq(totalAmount);
+    
+                const { balance, user, claimed } = stateInfo[userIdx];
+                expect(await tokenRecorder.balanceOfAt(user.address, snapshotId)).to.be.eq(balance);
+                if (claimed && claimed[erc20.address]) {
+                    continue;
+                }
+    
+                const claimableCalculated = parseInt(distributeAmount * balance / totalAmount);
+                claimableExpected += claimableCalculated;
+                stateInfo[userIdx].claimed = {...claimed, [erc20.address]: true};    
+            }
+            const claimable = parseInt(await dividendPool.connect(admin).claimable(erc20.address, thisUser.address));
+            expect(claimable).to.be.eq(claimableExpected);
+            if (claimableExpected > 0) {
+                validTokens.push(erc20);
+            }
+            allClaimables[erc20.address] = claimableExpected;  
+        }
+
+        const initialBalances = {};
+        for (const erc20 of validTokens) {
+            initialBalances[erc20.address] = parseInt(await erc20.balanceOf(thisUser.address));
+        }
+        
+        const tokenAddresses = validTokens.map(t => t.address);
+        await (await dividendPool.connect(thisUser).claimBatch(tokenAddresses));
+        
+        for (const erc20 of validTokens) {
+            const balanceDiff = parseInt(await erc20.balanceOf(thisUser.address)) - initialBalances[erc20.address];
+            expect(balanceDiff).to.be.eq(allClaimables[erc20.address]);
+        }
+    }
 
     const claim = async (thisUser, erc20) => {
         const distributions = distributeInfos[erc20.address];
@@ -185,14 +248,56 @@ describe("TokenDividendPool", function() {
         expect(claimable).to.be.eq(claimableExpected);
         const initialBalance = await erc20.balanceOf(thisUser.address);
         if (claimableExpected === 0) {
-            expect(dividendPool.connect(thisUser).claim(erc20.address)).to.be.revertedWith("Claimable amount is zero");
+            expect(dividendPool.connect(thisUser).claim(erc20.address)).to.be.revertedWith("Amount to be claimed is zero");
         } else {
             await (await dividendPool.connect(thisUser).claim(erc20.address)).wait();
         }
         const lastBalance = await erc20.balanceOf(thisUser.address);
         expect(lastBalance - initialBalance).to.be.eq(claimableExpected);
+        return claimableExpected;
     }
-    
+
+    const claimUpTo = async (thisUser, erc20, thisSnapshotId) => {
+        const distributions = distributeInfos[erc20.address];
+        let claimableExpected = 0;
+        for (const { distributeAmount, stateInfo, snapshotId } of distributions) {
+            let userIdx = -1;
+            for (let i = 0; i < stateInfo.length; ++i) {
+                if (thisUser.address == stateInfo[i].user.address) {
+                    userIdx = i;
+                    break;
+                }
+            }
+
+            const totalAmount = getTotalAmount(stateInfo);
+            expect(await tokenRecorder.totalSupplyAt(snapshotId)).to.be.eq(totalAmount);
+
+            const { balance, user, claimed } = stateInfo[userIdx];
+            expect(await tokenRecorder.balanceOfAt(user.address, snapshotId)).to.be.eq(balance);
+            if (claimed && claimed[erc20.address]) {
+                continue;
+            }
+            
+            const claimableCalculated = parseInt(distributeAmount * balance / totalAmount);
+            
+            claimableExpected += claimableCalculated;
+            stateInfo[userIdx].claimed = {...claimed, [erc20.address]: true};
+            if (thisSnapshotId === snapshotId) { break; }
+        }
+
+        const claimable = parseInt(await dividendPool.connect(admin).claimableUpTo(erc20.address, thisUser.address, thisSnapshotId));
+        expect(claimable).to.be.eq(claimableExpected);
+        const initialBalance = await erc20.balanceOf(thisUser.address);
+        if (claimableExpected === 0) {
+            expect(dividendPool.connect(thisUser).claimUpTo(erc20.address, thisSnapshotId)).to.be.revertedWith("Amount to be claimed is zero");
+        } else {
+            await (await dividendPool.connect(thisUser).claimUpTo(erc20.address, thisSnapshotId)).wait();
+        }
+        const lastBalance = await erc20.balanceOf(thisUser.address);
+        expect(lastBalance - initialBalance).to.be.eq(claimableExpected);
+        return claimableExpected;
+    }
+
 
     let stateInfo1 = null;
     it("should increase balances 1", async () => {
@@ -213,7 +318,7 @@ describe("TokenDividendPool", function() {
 
 
     it("should distribute 1 (ercA)", async () => {
-        const distr = await distribute(distributor, erc20A, 100000000, 100000000, stateInfo1);
+        const distr = await distribute(distributor, erc20A, 100000000, 100000000, getStateDeepCopy(stateInfo1));
         distributeInfos[erc20A.address].push(distr);
     });
 
@@ -237,17 +342,22 @@ describe("TokenDividendPool", function() {
     });
 
     it("should distribute 2 (ercA)", async () => {
-        const distr = await distribute(distributor, erc20A, 200000000, 300000000, stateInfo2);
+        const distr = await distribute(distributor, erc20A, 200000000, 300000000, getStateDeepCopy(stateInfo2));
         distributeInfos[erc20A.address].push(distr);
     });
 
     it("should distribute 3 (ercB)", async () => {
-        const distr = await distribute(distributor, erc20B, 200000000, 200000000, stateInfo2);
+        const distr = await distribute(distributor, erc20B, 200000000, 200000000, getStateDeepCopy(stateInfo2));
         distributeInfos[erc20B.address].push(distr);
     });
 
     it("should calculate claims and check 2", async() => {
         await calculateClaimAndCheck();
+    });
+
+    it("should claim up to 1", async () => {
+        await claimUpTo(user1, erc20A, 1);
+        await claimUpTo(user1, erc20A, 2);
     });
 
     it("should claim 1", async () => {
@@ -300,7 +410,7 @@ describe("TokenDividendPool", function() {
         await calculateClaimAndCheck();
     });
 
-    it("should distribute 4 (erc20B)", async () => {
+    it("should distribute 6 (erc20B)", async () => {
         const distr = await distribute(distributor, erc20B, 400000000, 600000000, getStateDeepCopy(stateInfo3));
         distributeInfos[erc20B.address].push(distr);
     });
@@ -310,19 +420,17 @@ describe("TokenDividendPool", function() {
     });
 
     it("should claim 2", async () => {
-        await claim(user1, erc20A);
-        await claim(user2, erc20A);
+        await claimBatch(user1, [erc20A, erc20B, erc20C]);
+        await claimBatch(user2, [erc20A, erc20C]);
+
         await claim(user3, erc20A);
         await claim(user4, erc20A);
         await claim(user5, erc20A);
         await claim(user6, erc20A);
         
-        await claim(user3, erc20B);
         await claim(user4, erc20B);
         await claim(user5, erc20B);        
         
-        await claim(user1, erc20C);
-        await claim(user2, erc20C);
         await claim(user3, erc20C);        
     });
 
@@ -336,6 +444,10 @@ describe("TokenDividendPool", function() {
     });
 
     it("should claim 3", async () => {
+        await claimBatch(user3, [erc20A, erc20B, erc20C]);
+        await claimBatch(user4, [erc20A, erc20B, erc20C]);
+        await claimBatch(user5, [erc20A, erc20B, erc20C]);
+
         await claim(user1, erc20A);
         await claim(user2, erc20A);
         await claim(user3, erc20A);

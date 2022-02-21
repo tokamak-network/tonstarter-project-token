@@ -32,8 +32,9 @@ contract TokenDividendPool is
 
     /// @inheritdoc ITokenDividendPool
     function claim(address _token) public override {
-        claimUpTo(
+        _claimUpTo(
             _token,
+            msg.sender,
             distributions[_token].snapshots.length
         );
     }
@@ -45,10 +46,32 @@ contract TokenDividendPool is
         }
     }
 
+    function getSnapshotIndexForId(address _token, uint256 _snapshotId) view internal returns (bool found, uint256 index) {
+        LibTokenDividendPool.SnapshotInfo[] storage snapshots = distributions[_token].snapshots;
+        if (snapshots.length == 0) {
+            return (false, 0);
+        }
+        
+        index = snapshots.length - 1;
+        while (true) {
+            if (snapshots[index].id == _snapshotId) {
+                return (true, index);
+            }
+
+            if (index == 0) break;
+            index --;
+        }
+        return (false, 0);
+    }
+
     /// @inheritdoc ITokenDividendPool
-    function claimUpTo(address _token, uint256 _endSnapshotIndex) public override {
-        require(claimableUpTo(_token, msg.sender, _endSnapshotIndex) > 0, "Claimable amount is zero");
-        _claimUpTo(_token, msg.sender, _endSnapshotIndex);
+    function claimUpTo(address _token, uint256 _endSnapshotId) public override {
+        require(claimableUpTo(_token, msg.sender, _endSnapshotId) > 0, "Amount to be claimed is zero");
+
+        (bool found, uint256 snapshotIndex) = getSnapshotIndexForId(_token, _endSnapshotId); 
+        require(found, "No such snapshot ID is found");
+        uint256 endSnapshotIndex = snapshotIndex + 1;
+        _claimUpTo(_token, msg.sender, endSnapshotIndex);
     }
 
     /// @inheritdoc ITokenDividendPool
@@ -126,15 +149,19 @@ contract TokenDividendPool is
     function claimableUpTo(
         address _token,
         address _account,
-        uint256 _endSnapshotIndex
+        uint256 _endSnapshotId
     ) public view override returns (uint256) {
+        (bool found, uint256 snapshotIndex) = getSnapshotIndexForId(_token, _endSnapshotId); 
+        require(found, "No such snapshot ID is found");
+        uint256 endSnapshotIndex = snapshotIndex + 1;
+
         LibTokenDividendPool.Distribution storage distr = distributions[_token];
         uint256 startSnapshotIndex = distr.nonClaimedSnapshotIndex[_account];
         return _calculateClaim(
             _token,
             _account,
             startSnapshotIndex,
-            _endSnapshotIndex
+            endSnapshotIndex
         );
     }
 
@@ -142,12 +169,11 @@ contract TokenDividendPool is
     function _claimUpTo(address _token, address _account, uint256 _endSnapshotIndex) internal ifFree {
         LibTokenDividendPool.Distribution storage distr = distributions[_token];
         uint256 startSnapshotIndex = distr.nonClaimedSnapshotIndex[_account];
-        uint256 endSnapshotIndex = distr.snapshots.length;
         uint256 amountToClaim = _calculateClaim(
             _token,
             _account,
             startSnapshotIndex,
-            endSnapshotIndex
+            _endSnapshotIndex
         );
 
         require(amountToClaim > 0, "Amount to be claimed is zero");
@@ -199,7 +225,6 @@ contract TokenDividendPool is
         if (supply == 0) {
             return 0;
         }
-
         return _totalDividendAmount * balance / supply;
     }
 }
