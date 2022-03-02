@@ -43,7 +43,10 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@makerdao/currency": "^0.9.10",
     "@nomiclabs/hardhat-web3": "^2.0.0",
+    "@openzeppelin/test-helpers": "^0.5.15",
+    "@uniswap/v3-periphery": "^1.4.0",
     "ethers-eip712": "^0.2.0"
   }
 }
