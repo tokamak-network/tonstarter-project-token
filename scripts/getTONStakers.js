@@ -84,9 +84,9 @@ async function getStakeOfAllUsers() {
 }
 
 async function main() {
-  // await getStakeOfAllUsers();
+  await getStakeOfAllUsers();
   // await getLayer2s();
-  await getTONStakers();
+  // await getTONStakers();
   // await getStakeOfAllUsers();
 }
 

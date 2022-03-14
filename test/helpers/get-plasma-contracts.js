@@ -25,8 +25,19 @@ async function getPlasmaContractsMainnet() {
     await network.provider.send("hardhat_setBalance", [
         ownerAddress,
         "0x10000000000000000000000000",
-      ]);
+    ]);
     const owner = await ethers.getSigner(ownerAddress);
+
+    const coinageAddress = "0xCc38C7aaf2507da52A875e93F57451e58E8c6372";
+    await network.provider.request({
+        method: "hardhat_impersonateAccount",
+        params: [coinageAddress],
+    });
+    await network.provider.send("hardhat_setBalance", [
+        coinageAddress,
+        "0x10000000000000000000000000",
+    ]);
+    const coinage = await ethers.getSigner(coinageAddress);
 
     const depositManagerAddress = '0x56E465f654393fa48f007Ed7346105c7195CEe43';
     const depositManager = await ethers.getContractAt("DepositManager", depositManagerAddress);
@@ -36,14 +47,18 @@ async function getPlasmaContractsMainnet() {
 
     const autoRefactorCoinageAddress = '0x99af9e1fbd55c6d6cb89e21274961096088eb830';
     const autoRefactorCoinage = await ethers.getContractAt("AutoRefactorCoinage", autoRefactorCoinageAddress);
+    const layer2RegistryAddress = '0x0b3E174A2170083e770D5d4Cf56774D221b7063e';
+    const layer2Registry = await ethers.getContractAt("Layer2Registry", layer2RegistryAddress);
     
-    
+
     const wtonAddress = '0xc4a11aaf6ea915ed7ac194161d2fc9384f15bff2';
     const wton = await ethers.getContractAt("WTON", wtonAddress);
     
     return {
+        coinage,
         owner,
         users,
+        layer2Registry,
         depositManager,
         seigManager,
         autoRefactorCoinage,
