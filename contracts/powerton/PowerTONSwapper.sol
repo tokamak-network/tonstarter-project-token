@@ -114,7 +114,6 @@ contract PowerTONSwapper is iPowerTON {
     function onDeposit(address layer2, address account, uint256 amount) external override {
         address totAddress = SeigManagerI(seigManager).tot();
         uint256 coinageTotalSupplyBefore = AutoRefactorCoinageI(totAddress).totalSupply() - amount;
-        uint256 balance = IIERC20(erc20Recorder).balanceOf(account);
         uint256 totalSupply = IIERC20(erc20Recorder).totalSupply();
         uint256 amountToMint = amount * totalSupply / coinageTotalSupplyBefore;
         console.log("coinageTotalSupplyBefore: %s, totalsupply: %s", coinageTotalSupplyBefore, totalSupply);
@@ -123,18 +122,11 @@ contract PowerTONSwapper is iPowerTON {
     }
 
     function onWithdraw(address layer2, address account, uint256 amount) external override {
-        uint256 recorderBalance = IIERC20(erc20Recorder).balanceOf(account);
-        uint256 num = Layer2RegistryI(layer2Registry).numLayer2s();
-        uint256 totalBalance = 0;
-        for (uint256 i = 0; i < num; ++i) {
-            address layer2Address = Layer2RegistryI(layer2Registry).layer2ByIndex(i);
-            totalBalance += SeigManagerI(seigManager).stakeOf(
-                layer2Address,
-                account
-            );
-        }
-        console.log("Total: %s, Recorded Balance: %s", totalBalance, recorderBalance);
-        uint256 amountToBurn = amount * recorderBalance / totalBalance;
+        address totAddress = SeigManagerI(seigManager).tot();
+        uint256 coinageTotalSupplyBefore = AutoRefactorCoinageI(totAddress).totalSupply() + amount;
+        uint256 totalSupply = IIERC20(erc20Recorder).totalSupply();
+        uint256 amountToBurn = amount * totalSupply / coinageTotalSupplyBefore;
+        console.log("coinageTotalSupplyBefore: %s, totalsupply: %s", coinageTotalSupplyBefore, totalSupply);
         console.log("Amount: %s, Amount to burn: %s", amount, amountToBurn);
         IIERC20(erc20Recorder).burnFrom(account, amountToBurn);
     }

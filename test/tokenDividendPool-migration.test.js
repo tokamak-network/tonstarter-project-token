@@ -221,7 +221,7 @@ describe("TokenDividendPool Migration", function() {
         return Math.floor(Math.random()*(max));
     }
     it("should update seignorage", async () => {
-        const dur = parseInt(time.duration.days(20));
+        const dur = parseInt(time.duration.years(1));
         await ethers.provider.send("evm_increaseTime", [dur]);
         await ethers.provider.send("evm_mine");
     

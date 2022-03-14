@@ -28,7 +28,7 @@ async function getPlasmaContractsMainnet() {
     ]);
     const owner = await ethers.getSigner(ownerAddress);
 
-    const coinageAddress = "0xCc38C7aaf2507da52A875e93F57451e58E8c6372";
+    const coinageAddress = "0x39A13a796A3Cd9f480C28259230D2EF0a7026033";
     await network.provider.request({
         method: "hardhat_impersonateAccount",
         params: [coinageAddress],
