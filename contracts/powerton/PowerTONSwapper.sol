@@ -20,6 +20,9 @@ contract PowerTONSwapper is iPowerTON {
     address public layer2Registry;
     address public override seigManager;
 
+    event OnDeposit(address layer2, address indexed account, uint256 amount, uint256 amountToMint);
+    event OnWithdraw(address layer2, address indexed account, uint256 amount, uint256 amountToMint);
+
     event Swapped(
         uint256 amount
     );
@@ -119,6 +122,7 @@ contract PowerTONSwapper is iPowerTON {
         console.log("coinageTotalSupplyBefore: %s, totalsupply: %s", coinageTotalSupplyBefore, totalSupply);
         console.log("Amount: %s, Amount to mint: %s", amount, amountToMint);
         IIERC20(erc20Recorder).mint(account, amountToMint);
+        emit OnDeposit(layer2, account, amount, amountToMint);
     }
 
     function onWithdraw(address layer2, address account, uint256 amount) external override {
@@ -129,5 +133,7 @@ contract PowerTONSwapper is iPowerTON {
         console.log("coinageTotalSupplyBefore: %s, totalsupply: %s", coinageTotalSupplyBefore, totalSupply);
         console.log("Amount: %s, Amount to burn: %s", amount, amountToBurn);
         IIERC20(erc20Recorder).burnFrom(account, amountToBurn);
+        emit OnWithdraw(layer2, account, amount, amountToBurn);
     }
 }
+

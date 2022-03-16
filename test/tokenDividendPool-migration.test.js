@@ -34,7 +34,9 @@ describe("TokenDividendPool Migration", function() {
         swapProxy;
     let layer2s, stakers, stakesOfAllUsers;
     let autoRefactorCoinage;
-    
+    const gasUsedInfo = {};
+    let candidates;
+
     before(async () => {
         await network.provider.request({
             method: "hardhat_reset",
@@ -60,8 +62,12 @@ describe("TokenDividendPool Migration", function() {
             randomAccount,
         ] = await ethers.getSigners();
         
-        ({  
+        ({
+          candidates,
+          tonHolder,
           depositManager,
+          daoAgendaManager,
+          daoCommittee,
           seigManager,
           layer2Registry,
           owner,
@@ -69,6 +75,7 @@ describe("TokenDividendPool Migration", function() {
           wton,
           users,
           coinage,
+          ton,
         } = await getPlasmaContractsMainnet());
         [user1, user2, user3, user4, user5, user6] = users;
 
@@ -95,10 +102,89 @@ describe("TokenDividendPool Migration", function() {
         await (await tokenRecorder.grantRole(tokenRecorder.SNAPSHOT_ROLE(), dividendPool.address)).wait();
 
     });
+    function marshalString (str) {
+        if (str.slice(0, 2) === '0x') return str;
+        return '0x'.concat(str);
+    }
+    
+    function unmarshalString (str) {
+        if (str.slice(0, 2) === '0x') return str.slice(2);
+        return str;
+    }
+    
+    const setTimeTo = async (t) => {
+        await ethers.provider.send("evm_setNextBlockTimestamp", [parseInt(t)]);
+        await ethers.provider.send("evm_mine");
+    }
+    const createAgendaAndExecute = async ({ target, sig, params, paramTypes }) => {
+        const noticePeriod = await daoAgendaManager.minimumNoticePeriodSeconds();
+        const votingPeriod = await daoAgendaManager.minimumVotingPeriodSeconds();
+        
+        const targets = [target];
+        const functionBytecodes = [];
+        const selector = web3.eth.abi.encodeFunctionSignature(sig);
+
+        functionBytecodes.push(selector.concat(unmarshalString(
+            web3.eth.abi.encodeParameters(
+              paramTypes,
+              params
+            )))
+        );
+        
+        const param = web3.eth.abi.encodeParameters(
+            ["address[]", "uint128", "uint128", "bool", "bytes[]"],
+            [targets, noticePeriod.toString(), votingPeriod.toString(), true, functionBytecodes]
+        );
+
+        const agendaFee = await daoAgendaManager.createAgendaFees();
+        const receipt = await (await ton.connect(tonHolder).approveAndCall(
+            daoCommittee.address,
+            agendaFee,
+            param
+        )).wait();
+
+        const agendaID = parseInt(await daoAgendaManager.numAgendas()) - 1;
+        const agenda = await daoAgendaManager.agendas(agendaID);
+        console.log({ agenda });
+        const { noticeEndTimestamp } = agenda;
+        console.log({ noticeEndTimestamp });
+        await setTimeTo(noticeEndTimestamp);
+        for (const { candidate, candidateContract } of candidates) {
+            const vote = 1; // YES
+            console.log({ candidate: candidate.address, contract: candidateContract.address});
+            await (await candidateContract.connect(candidate).castVote(agendaID, vote, "test comment", ))
+        }
+        const { votingEndTimestamp } = agenda;
+
+        const currentTime = await time.latest();
+        if (currentTime < votingEndTimestamp) {
+          await setTimeTo(votingEndTimestamp);
+        }
+        const can = await daoAgendaManager.canExecuteAgenda(agendaID);
+        console.log({ can });
+    
+        // expect(daoAgendaManager.canExecuteAgenda(agendaID)).to.be.eq(true);
+
+        // const agendaAfter = await agendaManager.agendas(agendaID);
+        // agendaAfter[AGENDA_INDEX_STATUS].should.be.bignumber.equal(toBN(AGENDA_STATUS_WAITING_EXEC));
+
+        await (await daoCommittee.executeAgenda(agendaID)).wait();        
+    } 
 
     it("should disable staking", async () => {
-        await (await depositManager.connect(owner).setSeigManager(randomAccount.address)).wait();
+        const receipt = await (await depositManager.connect(owner).setSeigManager(randomAccount.address)).wait();
+        const gasUsed = receipt.gasUsed;
+        gasUsedInfo['setRandomSeigManager'] = gasUsed;
+
+        await createAgendaAndExecute({
+            target: depositManager.address,
+            sig: "setSeigManager(address)",
+            paramTypes: ["address"],
+            params: [randomAccount.address]
+        });
     });
+
+    return;
 
     it("should mint wtons", async () => {
         for (const user of users) {
@@ -133,10 +219,6 @@ describe("TokenDividendPool Migration", function() {
         // expect(balanceInitial.sub(balanceLast)).to.be.eq(amount);
     }
     
-    it("should fail deposit", async() => {
-
-    });
-
     it("should mint from saved data", async () => {        
         let accounts = [];
         let amounts = [];
@@ -159,15 +241,18 @@ describe("TokenDividendPool Migration", function() {
             accounts.push(staker);
             amounts.push(totalStaked);
 
-            if (accounts.length == 100) {
-                await (await tokenRecorder.connect(admin).mintBatch(accounts, amounts)).wait();
-                accounts = [];
-                amounts = [];
-            } 
+            // if (accounts.length == 100) {
+            //     await (await tokenRecorder.connect(admin).mintBatch(accounts, amounts)).wait();
+            //     accounts = [];
+            //     amounts = [];
+            // } 
         }
 
         if (accounts.length > 0) {
-            await (await tokenRecorder.connect(admin).mintBatch(accounts, amounts)).wait();
+            console.log(accounts.length);
+            const receipt = await (await tokenRecorder.connect(admin).mintBatch(accounts, amounts)).wait();
+            const gasUsed = receipt.gasUsed;
+            gasUsedInfo['mintBatch'] = gasUsed;    
         }          
     })
 
@@ -202,7 +287,9 @@ describe("TokenDividendPool Migration", function() {
 
 
     it("should enable deposit manager", async() => {
-        await (await depositManager.connect(owner).setSeigManager(seigManager.address)).wait();
+        const receipt = await (await depositManager.connect(owner).setSeigManager(seigManager.address)).wait();
+        const gasUsed = receipt.gasUsed;
+        gasUsedInfo['setValidSeigManager'] = gasUsed;    
     })
 
     it("should deposit", async() => {
@@ -225,7 +312,9 @@ describe("TokenDividendPool Migration", function() {
         await ethers.provider.send("evm_increaseTime", [dur]);
         await ethers.provider.send("evm_mine");
     
-        await seigManager.connect(coinage).updateSeigniorage();
+        const receipt = (await seigManager.connect(coinage).updateSeigniorage()).wait();
+        const gasUsed = receipt.gasUsed;
+        gasUsedInfo['updateSeigniorage'] = gasUsed;    
 
         await ethers.provider.send("evm_increaseTime", [dur]);
         await ethers.provider.send("evm_mine");
@@ -259,5 +348,9 @@ describe("TokenDividendPool Migration", function() {
 
         }
     });
+
+    it("should show gas used", async () => {
+        console.log({ gasUsedInfo });
+    })
 
 });
