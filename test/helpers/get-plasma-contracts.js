@@ -53,9 +53,9 @@ async function getPlasmaContractsMainnet() {
     const daoCommittee = await ethers.getContractAt("DAOCommittee", daoCommitteeAddress);
 
     const candidates = [];
-    const candidatesLength = parseInt(await daoCommittee.candidatesLength());
+    const candidatesLength = parseInt(await daoCommittee.maxMember());
     for (let i = 0; i < candidatesLength; i++) {
-        const candidateAddress = await daoCommittee.candidates(i);
+        const candidateAddress = await daoCommittee.members(i);
         let candidate = await impersonate(candidateAddress); 
         const candidateContractAddress = await daoCommittee.candidateContract(candidateAddress);
         const candidateContract = await ethers.getContractAt("Candidate", candidateContractAddress);

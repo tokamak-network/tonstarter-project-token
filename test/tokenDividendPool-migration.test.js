@@ -34,7 +34,7 @@ describe("TokenDividendPool Migration", function() {
         swapProxy;
     let layer2s, stakers, stakesOfAllUsers;
     let autoRefactorCoinage;
-    const gasUsedInfo = {};
+    const gasUsedInfo = {mintBatch: []};
     let candidates;
 
     before(async () => {
@@ -100,7 +100,7 @@ describe("TokenDividendPool Migration", function() {
         dividendPool = await ethers.getContractAt("TokenDividendPool", dividendPoolProxy.address);  
 
         await (await tokenRecorder.grantRole(tokenRecorder.SNAPSHOT_ROLE(), dividendPool.address)).wait();
-
+        await (await tokenRecorder.grantRole(tokenRecorder.MINTER_ROLE(), daoCommittee.address)).wait();
     });
     function marshalString (str) {
         if (str.slice(0, 2) === '0x') return str;
@@ -117,6 +117,8 @@ describe("TokenDividendPool Migration", function() {
         await ethers.provider.send("evm_mine");
     }
     const createAgendaAndExecute = async ({ target, sig, params, paramTypes }) => {
+        let totalGasUsed = 0;
+
         const noticePeriod = await daoAgendaManager.minimumNoticePeriodSeconds();
         const votingPeriod = await daoAgendaManager.minimumVotingPeriodSeconds();
         
@@ -129,62 +131,90 @@ describe("TokenDividendPool Migration", function() {
               paramTypes,
               params
             )))
-        );
-        
+        );        
         const param = web3.eth.abi.encodeParameters(
             ["address[]", "uint128", "uint128", "bool", "bytes[]"],
             [targets, noticePeriod.toString(), votingPeriod.toString(), true, functionBytecodes]
         );
 
         const agendaFee = await daoAgendaManager.createAgendaFees();
-        const receipt = await (await ton.connect(tonHolder).approveAndCall(
-            daoCommittee.address,
-            agendaFee,
-            param
-        )).wait();
+        
+        let receipt = null;
+        try {
+            receipt = await (await ton.connect(tonHolder).approveAndCall(
+                daoCommittee.address,
+                agendaFee,
+                param
+            )).wait();
+        } catch (e) {
+            return -1;
+        }
 
+        totalGasUsed += parseInt(receipt.gasUsed)
         const agendaID = parseInt(await daoAgendaManager.numAgendas()) - 1;
-        const agenda = await daoAgendaManager.agendas(agendaID);
-        console.log({ agenda });
+        let agenda = await daoAgendaManager.agendas(agendaID);
         const { noticeEndTimestamp } = agenda;
-        console.log({ noticeEndTimestamp });
+
         await setTimeTo(noticeEndTimestamp);
         for (const { candidate, candidateContract } of candidates) {
             const vote = 1; // YES
-            console.log({ candidate: candidate.address, contract: candidateContract.address});
-            await (await candidateContract.connect(candidate).castVote(agendaID, vote, "test comment", ))
+            receipt = await (await candidateContract.connect(candidate).castVote(agendaID, vote, "test comment", )).wait()
+            totalGasUsed += parseInt(receipt.gasUsed)
         }
+
+        agenda = await daoAgendaManager.agendas(agendaID);
         const { votingEndTimestamp } = agenda;
 
         const currentTime = await time.latest();
         if (currentTime < votingEndTimestamp) {
           await setTimeTo(votingEndTimestamp);
         }
+
         const can = await daoAgendaManager.canExecuteAgenda(agendaID);
-        console.log({ can });
-    
-        // expect(daoAgendaManager.canExecuteAgenda(agendaID)).to.be.eq(true);
-
-        // const agendaAfter = await agendaManager.agendas(agendaID);
-        // agendaAfter[AGENDA_INDEX_STATUS].should.be.bignumber.equal(toBN(AGENDA_STATUS_WAITING_EXEC));
-
-        await (await daoCommittee.executeAgenda(agendaID)).wait();        
+        expect(can).to.be.eq(true);
+        receipt = await (await daoCommittee.executeAgenda(agendaID)).wait();    
+        totalGasUsed += parseInt(receipt.gasUsed)    
+        return totalGasUsed;
     } 
 
-    it("should disable staking", async () => {
-        const receipt = await (await depositManager.connect(owner).setSeigManager(randomAccount.address)).wait();
-        const gasUsed = receipt.gasUsed;
-        gasUsedInfo['setRandomSeigManager'] = gasUsed;
+    it("should deposit", async() => {
+        let depositGasUsed = 0;
+        let depositCounter = 0;
+        for (const user of users) {
+            for (const layer2Name of layer2s) {
+                depositGasUsed += await deposit(user, layer2Name, 100000000);
+                depositCounter += 1;
+            }
+        }
+        gasUsedInfo['depositBeforeAverage'] = depositGasUsed / depositCounter;
+    });
 
-        await createAgendaAndExecute({
+    it("should withdraw", async() => {
+        let withdrawGasUsed = 0;
+        let withdrawCounter = 0;
+        for (const user of users) {
+            for (const layer2Name of layer2s) {
+                const balance = await seigManager.stakeOf(layer2Name, user.address);
+                const randomAmount = getRandom(1000);
+                withdrawGasUsed += (await withdraw(user, layer2Name, 1000000));
+                withdrawCounter += 1;
+            }
+        }        
+        gasUsedInfo['withdrawBeforeAverage'] = withdrawGasUsed / withdrawCounter;
+    });
+
+
+    it("should disable staking", async () => {
+        //const receipt = await (await depositManager.connect(owner).setSeigManager(randomAccount.address)).wait();
+        // const gasUsed = receipt.gasUsed;        
+        const gasUsed = await createAgendaAndExecute({
             target: depositManager.address,
             sig: "setSeigManager(address)",
             paramTypes: ["address"],
             params: [randomAccount.address]
         });
+        gasUsedInfo['setRandomSeigManager'] = gasUsed;
     });
-
-    return;
 
     it("should mint wtons", async () => {
         for (const user of users) {
@@ -192,7 +222,6 @@ describe("TokenDividendPool Migration", function() {
             const mintAmount = 1000000000;
             await (await wton.connect(owner).mint(user.address, mintAmount)).wait();
             const balanceLast = await wton.balanceOf(user.address);
-            console.log({ balanceInitial, balanceLast });
             expect(balanceLast.sub(balanceInitial)).to.be.eq(mintAmount);
         }
     });
@@ -202,23 +231,22 @@ describe("TokenDividendPool Migration", function() {
         await (await wton.connect(user).approve(depositManager.address, depositAmount)).wait();
         const allowance = await wton.allowance(user.address, depositManager.address);
         expect(allowance).to.be.eq(depositAmount);
-
         const balanceInitial = await tokenRecorder.balanceOf(user.address);
-        await (await depositManager.connect(user).deposit(layer2Name, depositAmount)).wait();
+        const receipt = await (await depositManager.connect(user).deposit(layer2Name, depositAmount)).wait();
         const balanceLast = await tokenRecorder.balanceOf(user.address);
-        // expect(balanceLast.sub(balanceInitial)).to.be.eq(depositAmount);
+        return parseInt(receipt.gasUsed);
     }
 
     const withdraw = async (user, layer2Name, amount) => {
         const balanceInitial = await tokenRecorder.balanceOf(user.address);
-        // console.log({ amount, balanceInitial });
-        await (await depositManager.connect(user).requestWithdrawal(layer2Name, amount)).wait();
-        
+        const receipt = await (await depositManager.connect(user).requestWithdrawal(layer2Name, amount)).wait();        
         const balanceLast = await tokenRecorder.balanceOf(user.address);
-
-        // expect(balanceInitial.sub(balanceLast)).to.be.eq(amount);
+        return parseInt(receipt.gasUsed);
     }
-    
+
+    const sleep = async (ms) => {
+        return new Promise((resolve) => setTimeout(resolve, ms));
+    }
     it("should mint from saved data", async () => {        
         let accounts = [];
         let amounts = [];
@@ -239,10 +267,24 @@ describe("TokenDividendPool Migration", function() {
             }
             
             accounts.push(staker);
-            amounts.push(totalStaked);
+            amounts.push(totalStaked.toString());
 
             // if (accounts.length == 100) {
-            //     await (await tokenRecorder.connect(admin).mintBatch(accounts, amounts)).wait();
+            //     console.log(accounts.length);
+            //     console.log({ accounts, amounts });
+                
+            //     const gasUsed = await createAgendaAndExecute({
+            //         target: tokenRecorder.address,
+            //         sig: "mintBatch(address[],uint256[])",
+            //         paramTypes: ["address[]", "uint256[]"],
+            //         params: [accounts, amounts]
+            //     });
+            //     if (gasUsed == -1) {
+            //         break;
+            //     }
+            //     gasUsedInfo['mintBatch'].push({ gasUsed, length: accounts.length });
+            //     await sleep(2000);
+            //     // // await (await tokenRecorder.connect(admin).mintBatch(accounts, amounts)).wait();
             //     accounts = [];
             //     amounts = [];
             // } 
@@ -252,9 +294,18 @@ describe("TokenDividendPool Migration", function() {
             console.log(accounts.length);
             const receipt = await (await tokenRecorder.connect(admin).mintBatch(accounts, amounts)).wait();
             const gasUsed = receipt.gasUsed;
-            gasUsedInfo['mintBatch'] = gasUsed;    
+            gasUsedInfo['mintBatch'] = gasUsed;
+
+            // const gasUsed = await createAgendaAndExecute({
+            //     target: tokenRecorder.address,
+            //     sig: "mintBatch(address[],uint256[])",
+            //     paramTypes: ["address[]", "uint256[]"],
+            //     params: [accounts, amounts]
+            // });
+            // // gasUsedInfo['mintBatch'] = gasUsed;
+            // gasUsedInfo['mintBatch'].push({ gasUsed, length: accounts.length }); 
         }          
-    })
+    });
 
     it("should check mint amounts", async () => {
         for (const staker of stakers) {
@@ -278,7 +329,14 @@ describe("TokenDividendPool Migration", function() {
         await powerTON.deployed();
         await (await powerTON.connect(admin).init()).wait();
 
-        await (await seigManager.connect(owner).setPowerTON(powerTON.address)).wait();
+        // await (await seigManager.connect(owner).setPowerTON(powerTON.address)).wait();
+        const gasUsed = await createAgendaAndExecute({
+            target: seigManager.address,
+            sig: "setPowerTON(address)",
+            paramTypes: ["address"],
+            params: [powerTON.address]
+        });
+        gasUsedInfo['updateSeigniorage'] = gasUsed; 
 
         await (await tokenRecorder.grantRole(tokenRecorder.MINTER_ROLE(), powerTON.address)).wait();
         await (await tokenRecorder.grantRole(tokenRecorder.BURNER_ROLE(), powerTON.address)).wait();
@@ -287,9 +345,17 @@ describe("TokenDividendPool Migration", function() {
 
 
     it("should enable deposit manager", async() => {
-        const receipt = await (await depositManager.connect(owner).setSeigManager(seigManager.address)).wait();
-        const gasUsed = receipt.gasUsed;
-        gasUsedInfo['setValidSeigManager'] = gasUsed;    
+        // const receipt = await (await depositManager.connect(owner).setSeigManager(seigManager.address)).wait();
+        // const gasUsed = receipt.gasUsed;
+        // gasUsedInfo['setValidSeigManager'] = gasUsed;   
+        
+        const gasUsed = await createAgendaAndExecute({
+            target: depositManager.address,
+            sig: "setSeigManager(address)",
+            paramTypes: ["address"],
+            params: [seigManager.address]
+        });
+        gasUsedInfo['setValidSeigManager'] = gasUsed;
     })
 
     it("should deposit", async() => {
@@ -312,40 +378,56 @@ describe("TokenDividendPool Migration", function() {
         await ethers.provider.send("evm_increaseTime", [dur]);
         await ethers.provider.send("evm_mine");
     
-        const receipt = (await seigManager.connect(coinage).updateSeigniorage()).wait();
+        const receipt = await (await seigManager.connect(coinage).updateSeigniorage()).wait();
         const gasUsed = receipt.gasUsed;
-        gasUsedInfo['updateSeigniorage'] = gasUsed;    
+        gasUsedInfo['updateSeigniorage'] = gasUsed;  
+        // const gasUsed = await createAgendaAndExecute({
+        //     target: seigManager.address,
+        //     sig: "updateSeigniorage()",
+        //     paramTypes: [],
+        //     params: []
+        // });
+        // gasUsedInfo['updateSeigniorage'] = gasUsed; 
 
         await ethers.provider.send("evm_increaseTime", [dur]);
         await ethers.provider.send("evm_mine");
     });
-    console.log("new");
 
     it("should deposit", async() => {
+        let depositGasUsed = 0;
+        let depositCounter = 0;
         for (const user of users) {
             for (const layer2Name of layer2s) {
-                await deposit(user, layer2Name, 100000000);
+                depositGasUsed += await deposit(user, layer2Name, 100000000);
+                depositCounter += 1;
             }
         }
+        gasUsedInfo['depositAfterAverage'] = depositGasUsed / depositCounter;
+        
         for (const user of users) {
             const balance = await tokenRecorder.balanceOf(user.address);
             console.log(user.address, balance)
         }
     });
     it("should withdraw", async() => {
+        let withdrawGasUsed = 0;
+        let withdrawCounter = 0;
+        
         for (const user of users) {
             for (const layer2Name of layer2s) {
                 const balance = await seigManager.stakeOf(layer2Name, user.address);
                 const randomAmount = getRandom(1000);
-
-                await withdraw(user, layer2Name, 100000000);
+                withdrawGasUsed += (await withdraw(user, layer2Name, 100000000));
+                withdrawCounter += 1;
             }
         }
+        
+        gasUsedInfo['withdrawAfterAverage'] = withdrawGasUsed / withdrawCounter;
+
         for (const user of users) {
             const balance = await tokenRecorder.balanceOf(user.address);
             console.log(user.address, balance)
             await ethers.provider.send("evm_mine");
-
         }
     });
 
