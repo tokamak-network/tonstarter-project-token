@@ -7,20 +7,20 @@ import "@openzeppelin/contracts/utils/Arrays.sol";
 contract ERC165A  {
 
      /*
+     *     bytes4(keccak256('totalSupply()')) == 0x18160ddd
      *     bytes4(keccak256('balanceOf(address)')) == 0x70a08231
-     *     bytes4(keccak256('ownerOf(uint256)')) == 0x6352211e
+     *     bytes4(keccak256('transfer(address,uint256)')) == 0xa9059cbb
+     *     bytes4(keccak256('allowance(address,address)')) == 0xdd62ed3e
      *     bytes4(keccak256('approve(address,uint256)')) == 0x095ea7b3
-     *     bytes4(keccak256('getApproved(uint256)')) == 0x081812fc
-     *     bytes4(keccak256('setApprovalForAll(address,bool)')) == 0xa22cb465
-     *     bytes4(keccak256('isApprovedForAll(address,address)')) == 0xe985e9c
      *     bytes4(keccak256('transferFrom(address,address,uint256)')) == 0x23b872dd
-     *     bytes4(keccak256('safeTransferFrom(address,address,uint256)')) == 0x42842e0e
-     *     bytes4(keccak256('safeTransferFrom(address,address,uint256,bytes)')) == 0xb88d4fde
+     *     bytes4(keccak256("safeTransfer(address,uint256)")) == 0x423f6cef
+     *     bytes4(keccak256("safeTransfer(address,uint256,bytes)")) == 0xeb795549
+     *     bytes4(keccak256("safeTransferFrom(address,address,uint256)")) == 0x42842e0e
+     *     bytes4(keccak256("safeTransferFrom(address,address,uint256,bytes)")) == 0xb88d4fde
      *
-     *     => 0x70a08231 ^ 0x6352211e ^ 0x095ea7b3 ^ 0x081812fc ^
-     *        0xa22cb465 ^ 0xe985e9c ^ 0x23b872dd ^ 0x42842e0e ^ 0xb88d4fde == 0x80ac58cd
+     *     => 0x18160ddd ^ 0x70a08231 ^ 0xa9059cbb ^ 0xdd62ed3e ^ 0x095ea7b3 ^ 0x23b872dd ^ 0x423f6cef ^ 0xeb795549 ^ 0x42842e0e ^ 0xb88d4fde == 0x65787371
      */
-    bytes4 public constant _INTERFACE_ID_ERC20 = 0x80ac58cd;
+    bytes4 public constant _INTERFACE_ID_ERC20 = 0x65787371;
 
     mapping(bytes4 => bool) public _supportedInterfaces;
 
