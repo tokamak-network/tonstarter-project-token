@@ -101,7 +101,13 @@ describe("TokenDividendPool Migration", function() {
 
         await (await tokenRecorder.grantRole(tokenRecorder.SNAPSHOT_ROLE(), dividendPool.address)).wait();
         await (await tokenRecorder.grantRole(tokenRecorder.MINTER_ROLE(), daoCommittee.address)).wait();
+
+        const ERC20Contract = await ethers.getContractFactory("TestERC20");
+
+        erc20A = await ERC20Contract.connect(admin).deploy("TestERC20A", "ERA");
+        await erc20A.deployed(); 
     });
+
     function marshalString (str) {
         if (str.slice(0, 2) === '0x') return str;
         return '0x'.concat(str);
@@ -267,7 +273,7 @@ describe("TokenDividendPool Migration", function() {
             }
             
             accounts.push(staker);
-            amounts.push(totalStaked.toString());
+            amounts.push(totalStaked.div(ethers.BigNumber.from(1000000000)).toString());
 
             // if (accounts.length == 100) {
             //     console.log(accounts.length);
@@ -393,22 +399,23 @@ describe("TokenDividendPool Migration", function() {
         await ethers.provider.send("evm_mine");
     });
 
-    it("should deposit", async() => {
-        let depositGasUsed = 0;
-        let depositCounter = 0;
-        for (const user of users) {
-            for (const layer2Name of layer2s) {
-                depositGasUsed += await deposit(user, layer2Name, 100000000);
-                depositCounter += 1;
-            }
-        }
-        gasUsedInfo['depositAfterAverage'] = depositGasUsed / depositCounter;
+    // it("should deposit", async() => {
+    //     let depositGasUsed = 0;
+    //     let depositCounter = 0;
+    //     for (const user of users) {
+    //         for (const layer2Name of layer2s) {
+    //             depositGasUsed += await deposit(user, layer2Name, 100000000);
+    //             depositCounter += 1;
+    //         }
+    //     }
+    //     gasUsedInfo['depositAfterAverage'] = depositGasUsed / depositCounter;
         
-        for (const user of users) {
-            const balance = await tokenRecorder.balanceOf(user.address);
-            console.log(user.address, balance)
-        }
-    });
+    //     for (const user of users) {
+    //         const balance = await tokenRecorder.balanceOf(user.address);
+    //         console.log(user.address, balance)
+    //     }
+    // });
+
     it("should withdraw", async() => {
         let withdrawGasUsed = 0;
         let withdrawCounter = 0;
@@ -417,7 +424,7 @@ describe("TokenDividendPool Migration", function() {
             for (const layer2Name of layer2s) {
                 const balance = await seigManager.stakeOf(layer2Name, user.address);
                 const randomAmount = getRandom(1000);
-                withdrawGasUsed += (await withdraw(user, layer2Name, 100000000));
+                withdrawGasUsed += (await withdraw(user, layer2Name, 50000000));
                 withdrawCounter += 1;
             }
         }
@@ -427,12 +434,29 @@ describe("TokenDividendPool Migration", function() {
         for (const user of users) {
             const balance = await tokenRecorder.balanceOf(user.address);
             console.log(user.address, balance)
-            await ethers.provider.send("evm_mine");
+        }
+    });
+
+    const distribute = async (distributor, erc20, distributeAmount) => {
+        await (await erc20.connect(admin).mint(distributor.address, distributeAmount)).wait();
+        await (await erc20.connect(distributor).approve(dividendPool.address, distributeAmount)).wait();
+        await (await dividendPool.connect(distributor).distribute(erc20.address, distributeAmount)).wait();
+    }
+
+    it("should distribute and check", async () => {
+        await distribute(distributor, erc20A, 1000);
+        for (const user of users) {
+            const balance = await tokenRecorder.balanceOf(user.address);
+            const totalSupply = await tokenRecorder.totalSupply();
+            
+            const claimable = parseInt(await dividendPool.claimable(erc20A.address, user.address));
+            const totalDistribution = parseInt(await dividendPool.totalDistribution(erc20A.address));
+            console.log(user.address, balance, claimable, totalDistribution, totalSupply);
         }
     });
 
     it("should show gas used", async () => {
         console.log({ gasUsedInfo });
-    })
+    });
 
 });

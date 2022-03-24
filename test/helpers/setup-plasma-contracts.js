@@ -186,6 +186,42 @@ const version = "1.0";
     .deploy();
   await layer2Registry.deployed();
 
+  const development = true;
+  const NRBEpochLength = 2;
+  const statesRoot = '0xdb431b544b2f5468e3f771d7843d9c5df3b4edcf8bc1c599f18f0b4ea8709bc3';
+  const transactionsRoot = '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421';
+  const receiptsRoot = '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421';
+  const developmentEtherToken = true;
+  const developmentLayer2 = false;
+  const swapEnabled = true;
+
+  const epochHandler = await (
+    await ethers.getContractFactory("EpochHandler")
+  )
+    .connect(deployer)
+    .deploy();
+  
+  const submitHandler = await (
+      await ethers.getContractFactory("SubmitHandler")
+    )
+      .connect(deployer)
+      .deploy(epochHandler.address);
+
+  const mintableToken = await (
+    await ethers.getContractFactory("TestERC20")
+  ).deploy("Mintable", "MNT");
+
+  const etherToken = await(
+    await ethers.getContractFactory("EtherToken")
+  ).deploy(developmentEtherToken, mintableToken.address, swapEnabled);
+
+  const layer2 = await (
+      await ethers.getContractFactory("Layer2")
+    )
+      .connect(deployer)
+      .deploy(epochHandler.address, submitHandler.address, etherToken.address, development, NRBEpochLength, statesRoot, transactionsRoot, receiptsRoot);
+  await layer2Registry.connect(deployer).register(layer2.address);
+    
   const depositManager = await (
     await ethers.getContractFactory("DepositManager")
   )
@@ -231,6 +267,11 @@ const version = "1.0";
   await wton.connect(deployer).addMinter(seigManager.address);
   await ton.connect(deployer).addMinter(wton.address);
 
+  await (await layer2Registry.connect(deployer).deployCoinage(
+    layer2.address,
+    seigManager.address
+  )).wait()
+  
   await Promise.all(
     [depositManager, wton].map((contract) =>
       contract.connect(deployer).setSeigManager(seigManager.address)
@@ -297,6 +338,8 @@ const version = "1.0";
     ton,
     wton,
     tos,
+    layer2,
+    layer2Registry,
     depositManager,
     seigManager,
     stakeRegistry,
