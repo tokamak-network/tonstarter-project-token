@@ -23,6 +23,13 @@ const createAgenda = async (daoAgendaManager, { target, sig, params, paramTypes 
     );
 
     const agendaFee = await daoAgendaManager.connect(creator).createAgendaFees();
+    const tonAddress = "0x44d4F5d89E9296337b8c48a332B3b2fb2C190CD0";
+    const tonABI = JSON.parse(await fs.readFileSync("./abi/TON.json")).abi;
+    const ton = new ethers.Contract(
+        tonAddress,
+        tonABI,
+        ethers.provider
+    );
 
     let receipt = null;
     await (await ton.connect(creator).approveAndCall(
@@ -53,7 +60,7 @@ task("execute-agenda", "")
     .addParam("agendaID", "")
     .addParam("daoAgendaManagerAddress", "")
     .setAction(async ({ daoAgendaManagerAddress, agendaID }) => {
-        const daoAgendaManagerABI = JSON.parse(await fs.readFileSync("./abi/daoAgendaManager.json")).result;
+        const daoAgendaManagerABI = JSON.parse(await fs.readFileSync("./abi/daoAgendaManager.json")).abi;
         const daoAgendaManager = new ethers.Contract(
             daoAgendaManagerAddress,
             daoAgendaManagerABI,
