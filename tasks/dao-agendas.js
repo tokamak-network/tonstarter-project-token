@@ -45,6 +45,15 @@ const createAgenda = async (daoAgendaManager, { target, sig, params, paramTypes 
 }
 
 const executeAgenda = async (daoAgendaManager, agendaID, executor) => {
+    //const daoCommitteeABI = JSON.parse(await fs.readFileSync("./abi/daoCommittee.json")).abi;
+    let daoCommitteeAddress = '0x543550A8B8528A7Bcb4Ca42230F4a8C8117cdFDb';
+    const daoCommitteeABI = require("../abi/daoCommittee.json").abi;
+        const daoCommittee = new ethers.Contract(
+            daoCommitteeAddress,
+            daoCommitteeABI,
+            ethers.provider
+        );
+
     const can = await daoAgendaManager.canExecuteAgenda(agendaID);
     if (!can) {
         console.log("CANNOT BE EXECUTED");
@@ -58,17 +67,18 @@ const voteAgenda = async(candidateContract, candidate, agendaID, vote) => {
 }
 
 task("execute-agenda", "")
-    .addParam("agendaID", "")
+    .addParam("agendaId", "")
     .addParam("daoAgendaManagerAddress", "")
-    .setAction(async ({ daoAgendaManagerAddress, agendaID }) => {
+    .setAction(async ({ daoAgendaManagerAddress, agendaId }) => {
         const daoAgendaManagerABI = JSON.parse(await fs.readFileSync("./abi/daoAgendaManager.json")).abi;
         const daoAgendaManager = new ethers.Contract(
             daoAgendaManagerAddress,
             daoAgendaManagerABI,
             ethers.provider
         );
+        console.log("agendaId", agendaId);
         const [admin] = await ethers.getSigners();
-        await executeAgenda(daoAgendaManager, agendaID, admin);
+        await executeAgenda(daoAgendaManager, agendaId, admin);
     });
 
 task("create-set-seig-manager-agenda", "")
@@ -112,6 +122,9 @@ task("create-set-power-ton-agenda", "")
             paramTypes: ["address"],
             params: [powerTonAddress]
         }
+        console.log("seigManagerAddress:", seigManagerAddress);
+        console.log("powerTonAddress:", powerTonAddress);
+
         const [admin] = await ethers.getSigners()
         const { agendaID } = await createAgenda(daoAgendaManager, args, admin);
         console.log("Agenda Created:", agendaID);
@@ -119,5 +132,60 @@ task("create-set-power-ton-agenda", "")
 
 
 
+
+
+task("get-power-ton", "")
+    .addParam("seigManagerAddress", "")
+    .setAction(async ({ seigManagerAddress }) => {
+        const seigManagerABI = JSON.parse(await fs.readFileSync("./abi/seigManager.json")).abi;
+        const seigManager = new ethers.Contract(
+            seigManagerAddress,
+            seigManagerABI,
+            ethers.provider
+        );
+        const powerTon = await seigManager.powerton();
+        console.log("powerTon :", powerTon);
+    });
+
+
+
+
+task("get-stake-ton-of-seig-manager", "")
+    .addParam("seigManagerAddress", "")
+    .addParam("layerAddress", "")
+    .addParam("userAddress", "")
+    .setAction(async ({ seigManagerAddress, layerAddress, userAddress }) => {
+        const seigManagerABI = JSON.parse(await fs.readFileSync("./abi/seigManager.json")).abi;
+        const seigManager = new ethers.Contract(
+            seigManagerAddress,
+            seigManagerABI,
+            ethers.provider
+        );
+        const stakeOf = await seigManager.stakeOf(layerAddress, userAddress);
+        console.log("stakeOf of layer2 :", stakeOf);
+    });
+
+
+
+task("get-stake-tot-of-seig-manager", "")
+    .addParam("seigManagerAddress", "")
+    .setAction(async ({ seigManagerAddress }) => {
+        const seigManagerABI = JSON.parse(await fs.readFileSync("./abi/seigManager.json")).abi;
+        const seigManager = new ethers.Contract(
+            seigManagerAddress,
+            seigManagerABI,
+            ethers.provider
+        );
+        const tot = await seigManager.tot();
+
+        const autoRefactorCoinageABI = JSON.parse(await fs.readFileSync("./abi/autoRefactorCoinage.json")).abi;
+        const autoRefactorCoinage = new ethers.Contract(
+            tot,
+            autoRefactorCoinageABI,
+            ethers.provider
+        );
+        const totalSupply = await autoRefactorCoinage.totalSupply();
+        console.log("totalSupply of tot :", totalSupply);
+    });
 
 
