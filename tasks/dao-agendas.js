@@ -1,3 +1,5 @@
+const fs = require("fs");
+
 const createAgenda = async (daoAgendaManager, { target, sig, params, paramTypes }, creator) => {
     let totalGasUsed = 0;
     const noticePeriod = await daoAgendaManager.minimumNoticePeriodSeconds();
@@ -63,7 +65,7 @@ task("create-set-seig-manager-agenda", "")
     .addParam("depositManagerAddress", "")
     .addParam("seigManagerAddress", "")
     .setAction(async ({ daoAgendaManagerAddress, depositManagerAddress, seigManagerAddress }) => {
-        const daoAgendaManagerABI = JSON.parse(await fs.readFileSync("./abi/daoAgendaManager.json")).result;
+        const daoAgendaManagerABI = JSON.parse(await fs.readFileSync("./abi/daoAgendaManager.json")).abi;
         const daoAgendaManager = new ethers.Contract(
             daoAgendaManagerAddress,
             daoAgendaManagerABI,
@@ -86,7 +88,7 @@ task("create-set-power-ton-agenda", "")
     .addParam("powerTonAddress", "")
     .addParam("seigManagerAddress", "")
     .setAction(async ({ daoAgendaManagerAddress, powerTonAddress, seigManagerAddress }) => {
-        const daoAgendaManagerABI = JSON.parse(await fs.readFileSync("./abi/daoAgendaManager.json")).result;
+        const daoAgendaManagerABI = JSON.parse(await fs.readFileSync("./abi/daoAgendaManager.json")).abi;
         const daoAgendaManager = new ethers.Contract(
             daoAgendaManagerAddress,
             daoAgendaManagerABI,
