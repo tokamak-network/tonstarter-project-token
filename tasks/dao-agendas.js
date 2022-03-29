@@ -7,7 +7,7 @@ const createAgenda = async (daoAgendaManager, { target, sig, params, paramTypes 
     let totalGasUsed = 0;
     const noticePeriod = await daoAgendaManager.minimumNoticePeriodSeconds();
     const votingPeriod = await daoAgendaManager.minimumVotingPeriodSeconds();
-    
+
     const targets = [target];
     const functionBytecodes = [];
     const selector = web3.eth.abi.encodeFunctionSignature(sig);
@@ -16,14 +16,14 @@ const createAgenda = async (daoAgendaManager, { target, sig, params, paramTypes 
           paramTypes,
           params
         )))
-    );        
+    );
     const param = web3.eth.abi.encodeParameters(
         ["address[]", "uint128", "uint128", "bool", "bytes[]"],
         [targets, noticePeriod.toString(), votingPeriod.toString(), true, functionBytecodes]
     );
 
     const agendaFee = await daoAgendaManager.connect(creator).createAgendaFees();
-    
+
     let receipt = null;
     await (await ton.connect(creator).approveAndCall(
         daoCommittee.address,
@@ -74,7 +74,7 @@ task("create-set-seig-manager-agenda", "")
             daoAgendaManagerABI,
             ethers.provider
         );
- 
+
         const args = {
             target: depositManagerAddress,
             sig: "setSeigManager(address)",
@@ -97,7 +97,7 @@ task("create-set-power-ton-agenda", "")
             daoAgendaManagerABI,
             ethers.provider
         );
- 
+
         const args = {
             target: seigManagerAddress,
             sig: "setPowerTON(address)",
