@@ -13,6 +13,7 @@ import "../common/AccessibleCommon.sol";
 import "./TokenDividendPoolStorage.sol";
 
 import "../interfaces/IIERC20.sol";
+import "hardhat/console.sol";
 
 contract TokenDividendPool is
     TokenDividendPoolStorage,
@@ -228,6 +229,7 @@ contract TokenDividendPool is
         if (supply == 0) {
             return 0;
         }
+        console.log("Balance: %d, Total: %d, Dividend Amount: %d", balance, supply, _totalDividendAmount);
         return _totalDividendAmount * balance / supply;
     }
 }

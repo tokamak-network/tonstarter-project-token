@@ -137,3 +137,22 @@ contract PowerTONSwapper is iPowerTON {
     }
 }
 
+/*
+A1 = a1 + a2 + a3 + a4 + a5
+B1 = b1 + b2 + b3 + b4 + b5
+
+A = k + A1
+B = B1
+
+
+A1 / B1 = C1
+
+A / B = C 
+
+k / B1 + A1 / B1 = C
+
+k / B1 + C1 = C
+
+A / B = C1 + k / B1
+
+*/
