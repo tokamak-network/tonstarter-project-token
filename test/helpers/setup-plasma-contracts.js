@@ -277,7 +277,8 @@ const version = "1.0";
       contract.connect(deployer).setSeigManager(seigManager.address)
     )
   );
-
+  const tot = await ethers.getContractAt("AutoRefactorCoinage", await seigManager.tot());
+  console.log({ tot });
   // ton setting
   await ton
     .connect(deployer)
@@ -337,6 +338,7 @@ const version = "1.0";
   return {
     ton,
     wton,
+    tot,
     tos,
     layer2,
     layer2Registry,

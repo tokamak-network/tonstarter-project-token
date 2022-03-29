@@ -65,7 +65,8 @@ describe("TokenDividendPool Migration", function() {
           wton,
           coinage,
           ton,
-          layer2
+          layer2,
+          tot
         } = await setupPlasmaContracts(admin.address));
 
         const tokenRecorderContract = await ethers.getContractFactory("ERC20Recorder");
@@ -104,7 +105,22 @@ describe("TokenDividendPool Migration", function() {
         const operator = await layer2.operator();
         await (await coinageA.connect(seigManagerImp).mint(operator, minimumAmount)).wait();
     });
-    
+
+    const getBalancesInfo = async (user) => {
+        const staked = await seigManager.stakeOf(layer2Address, user.address);
+        const balance = await tokenRecorder.balanceOf(user.address);
+        return { staked, balance };
+    }
+
+    const printBalances = async (user) => {
+        console.log("USER - ", user.address);
+        const { staked, balance } = await getBalancesInfo(user);
+        console.log("Staked: ", staked.toString());
+        console.log("Balance: ", balance.toString());
+        console.log();
+        return { staked, balance };
+    }
+
     const setTimeTo = async (t) => {
         await ethers.provider.send("evm_setNextBlockTimestamp", [parseInt(t)]);
         await ethers.provider.send("evm_mine");
@@ -131,15 +147,33 @@ describe("TokenDividendPool Migration", function() {
         const balanceInitial = await tokenRecorder.balanceOf(user.address);
         const receipt = await (await depositManager.connect(user).deposit(layer2Name, depositAmount)).wait();
         const balanceLast = await tokenRecorder.balanceOf(user.address);
-        return parseInt(receipt.gasUsed);
+
+        const coinageTotalSupply = await tot.totalSupply();
+        const recorderTotalSupply = await tokenRecorder.totalSupply();
+        
+        return {
+            depositAmount,
+            mintAmount: balanceLast.sub(balanceInitial),
+            coinageTotalSupply,
+            recorderTotalSupply
+        };
     }
 
     const withdraw = async (user, layer2Name, amount) => {
         amount = ethers.utils.parseEther(amount.toString());
+
         const balanceInitial = await tokenRecorder.balanceOf(user.address);
         const receipt = await (await depositManager.connect(user).requestWithdrawal(layer2Name, amount)).wait();        
         const balanceLast = await tokenRecorder.balanceOf(user.address);
-        return parseInt(receipt.gasUsed);
+
+        const coinageTotalSupply = await tot.totalSupply();
+        const recorderTotalSupply = await tokenRecorder.totalSupply();
+        return {
+            burnAmount: balanceLast.sub(balanceInitial),
+            withdrawAmount: amount,
+            coinageTotalSupply,
+            recorderTotalSupply
+        };
     }
 
     it("should find layer2", async() => {
@@ -151,24 +185,53 @@ describe("TokenDividendPool Migration", function() {
     })
 
     it("should deposit 1", async() => {
-        await deposit(user1, layer2Address, 100000);
-        await deposit(user2, layer2Address, 100000);
-        const stake1 = await seigManager.stakeOf(layer2Address, user1.address);
-        const stake2 = await seigManager.stakeOf(layer2Address, user2.address);
-        console.log({ stake1, stake2 });
+        await printBalances(user1);
+        await printBalances(user2);
+        
+        const { 
+            depositAmount: depositAmount1,
+            mintAmount: mintAmount1,
+            coinageTotalSupply: coinageTotalSupply1,
+            recorderTotalSupply: recorderTotalSupply1,
+        } = await deposit(user1, layer2Address, 50000);
+        console.log({ coinageTotalSupply1, recorderTotalSupply1, mintAmount1, depositAmount1 });
+        
+        const { 
+            depositAmount: depositAmount2,
+            mintAmount: mintAmount2,
+            coinageTotalSupply: coinageTotalSupply2,
+            recorderTotalSupply: recorderTotalSupply2,
+        } = await deposit(user2, layer2Address, 100000);
+        console.log({ coinageTotalSupply2, recorderTotalSupply2, mintAmount2, depositAmount2 });
+        
+        await printBalances(user1);
+        await printBalances(user2);
     });
 
+
+
     it("should withdraw 1", async() => {
-        let stake1 = await seigManager.stakeOf(layer2Address, user1.address);
-        let stake2 = await seigManager.stakeOf(layer2Address, user1.address);
-        console.log({ stake1, stake2 });
+        await printBalances(user1);
+        await printBalances(user2);
 
-        await withdraw(user1, layer2Address, 50000);
-        await withdraw(user2, layer2Address, 50000);
+        const { 
+            withdrawAmount: withdrawAmount1,
+            burnAmount: burnAmount1,
+            coinageTotalSupply: coinageTotalSupply1,
+            recorderTotalSupply: recorderTotalSupply1,
+        } = await withdraw(user1, layer2Address, 50000);
+        console.log({ coinageTotalSupply1, recorderTotalSupply1, burnAmount1, withdrawAmount1 });
+        
+        const { 
+            withdrawAmount: withdrawAmount2,
+            burnAmount: burnAmount2,
+            coinageTotalSupply: coinageTotalSupply2,
+            recorderTotalSupply: recorderTotalSupply2,
+        } = await withdraw(user2, layer2Address, 25000);
+        console.log({ coinageTotalSupply2, recorderTotalSupply2, burnAmount2, withdrawAmount2 });
 
-        stake1 = await seigManager.stakeOf(layer2Address, user1.address);
-        stake2 = await seigManager.stakeOf(layer2Address, user1.address);
-        console.log({ stake1, stake2 });
+        await printBalances(user1);
+        await printBalances(user2);
     });
 
     it ("should mint for tokenRecorder", async () => {
@@ -187,28 +250,84 @@ describe("TokenDividendPool Migration", function() {
         await (await tokenRecorder.grantRole(tokenRecorder.BURNER_ROLE(), powerTON.address)).wait();
     });
 
+    let totalSupplyRatio = null;
     it("should deposit 2", async() => {
-        let stake1 = await seigManager.stakeOf(layer2Address, user1.address);
-        let stake2 = await seigManager.stakeOf(layer2Address, user2.address);
-        console.log({ stake1, stake2 });
-        await deposit(user1, layer2Address, 100000);
-        await deposit(user2, layer2Address, 100000);
-        stake1 = await seigManager.stakeOf(layer2Address, user1.address);
-        stake2 = await seigManager.stakeOf(layer2Address, user2.address);
-        console.log({ stake1, stake2 });
+        await printBalances(user1);
+        await printBalances(user2);
+
+        const { 
+            depositAmount: depositAmount1,
+            mintAmount: mintAmount1,
+            coinageTotalSupply: coinageTotalSupply1,
+            recorderTotalSupply: recorderTotalSupply1,
+        } = await deposit(user1, layer2Address, 100000);
+        totalSupplyRatio = coinageTotalSupply1.div(recorderTotalSupply1);
+
+        const { 
+            depositAmount: depositAmount2,
+            mintAmount: mintAmount2,
+            coinageTotalSupply: coinageTotalSupply2,
+            recorderTotalSupply: recorderTotalSupply2,
+        } = await deposit(user2, layer2Address, 100000);
+
+        expect(
+            coinageTotalSupply1.div(recorderTotalSupply1)
+        ).to.be.eq(coinageTotalSupply2.div(recorderTotalSupply2));
+        expect(
+            coinageTotalSupply1.div(recorderTotalSupply1)
+        ).to.be.eq(coinageTotalSupply2.div(recorderTotalSupply2));
+
+        // expect(
+        //     coinageTotalSupply1.mul(mintAmount1)
+        // ).to.be.eq(recorderTotalSupply1.mul(depositAmount1));
+        
+        // expect(
+        //     coinageTotalSupply2.mul(mintAmount2)
+        // ).to.be.eq(recorderTotalSupply2.mul(depositAmount2));
+
+        console.log({ coinageTotalSupply2, recorderTotalSupply2, mintAmount2, depositAmount2 });
+
+        await printBalances(user1);
+        await printBalances(user2);
     });
 
     it("should withdraw 2", async() => {
-        let stake1 = await seigManager.stakeOf(layer2Address, user1.address);
-        let stake2 = await seigManager.stakeOf(layer2Address, user1.address);
-        console.log({ stake1, stake2 });
+        await printBalances(user1);
+        await printBalances(user2);
 
-        await withdraw(user1, layer2Address, 50000);
-        await withdraw(user2, layer2Address, 50000);
+        const { 
+            withdrawAmount: withdrawAmount1,
+            burnAmount: burnAmount1,
+            coinageTotalSupply: coinageTotalSupply1,
+            recorderTotalSupply: recorderTotalSupply1,
+        } = withdraw(user1, layer2Address, 50000);
+        console.log({ coinageTotalSupply1, recorderTotalSupply1, burnAmount1, withdrawAmount1 });
+        
+        const { 
+            withdrawAmount: withdrawAmount2,
+            burnAmount: burnAmount2,
+            coinageTotalSupply: coinageTotalSupply2,
+            recorderTotalSupply: recorderTotalSupply2,
+        } = await withdraw(user2, layer2Address, 25000);
+        console.log({ coinageTotalSupply2, recorderTotalSupply2, burnAmount2, withdrawAmount2 });
 
-        stake1 = await seigManager.stakeOf(layer2Address, user1.address);
-        stake2 = await seigManager.stakeOf(layer2Address, user1.address);
-        console.log({ stake1, stake2 });
+        expect(
+            coinageTotalSupply1.div(recorderTotalSupply1)
+        ).to.be.eq(coinageTotalSupply2.div(recorderTotalSupply2));
+        expect(
+            coinageTotalSupply1.div(recorderTotalSupply1)
+        ).to.be.eq(coinageTotalSupply2.div(recorderTotalSupply2));
+
+        expect(
+            coinageTotalSupply1.mul(burnAmount1)
+        ).to.be.eq(recorderTotalSupply1.mul(burnAmount1));
+        
+        expect(
+            coinageTotalSupply2.mul(burnAmount2)
+        ).to.be.eq(recorderTotalSupply2.mul(withdrawAmount2));
+
+        await printBalances(user1);
+        await printBalances(user2);
     });
 
     it("should update seignorage", async () => {
@@ -221,34 +340,26 @@ describe("TokenDividendPool Migration", function() {
         await ethers.provider.send("evm_mine");
     });
 
-    it("should check for stakes", async () => {
-        const stake1 = await seigManager.stakeOf(layer2Address, user1.address);
-        const stake2 = await seigManager.stakeOf(layer2Address, user2.address);
-        console.log({ stake1, stake2 });
-    });
-
     it("should deposit 3", async() => {
-        let stake1 = await seigManager.stakeOf(layer2Address, user1.address);
-        let stake2 = await seigManager.stakeOf(layer2Address, user2.address);
-        console.log({ stake1, stake2 });
+        await printBalances(user1);
+        await printBalances(user2);
+
         await deposit(user1, layer2Address, 100000);
         await deposit(user2, layer2Address, 100000);
-        stake1 = await seigManager.stakeOf(layer2Address, user1.address);
-        stake2 = await seigManager.stakeOf(layer2Address, user2.address);
-        console.log({ stake1, stake2 });
+
+        await printBalances(user1);
+        await printBalances(user2);
     });
 
     it("should withdraw 3", async() => {
-        let stake1 = await seigManager.stakeOf(layer2Address, user1.address);
-        let stake2 = await seigManager.stakeOf(layer2Address, user1.address);
-        console.log({ stake1, stake2 });
+        await printBalances(user1);
+        await printBalances(user2);
 
         await withdraw(user1, layer2Address, 100000);
         await withdraw(user2, layer2Address, 100000);
 
-        stake1 = await seigManager.stakeOf(layer2Address, user1.address);
-        stake2 = await seigManager.stakeOf(layer2Address, user1.address);
-        console.log({ stake1, stake2 });
+        await printBalances(user1);
+        await printBalances(user2);
     });
 
     const distribute = async (distributor, erc20, distributeAmount) => {
