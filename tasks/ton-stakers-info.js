@@ -1,5 +1,4 @@
 const fs = require('fs');
-const { ethers } = require('hardhat');
 
 task("get-layer2-list", "Retrieve and save layer2 list into a file")
     .addParam("layer2RegistryAddress", "Seig Manager Address")
@@ -92,19 +91,12 @@ task("erc20-recorder-mint","")
     .addParam("erc20RecorderAddress", "ERC20 Recorder Address")
     .setAction(async function({ erc20RecorderAddress }) {
         const [admin] = await ethers.getSigners();
-
-        const erc20RecorderABI = JSON.parse(await fs.readFileSync("./abi/erc20Recorder.json")).result;      
-        const erc20Recorder = new ethers.Contract(
-            erc20RecorderAddress,
-            erc20RecorderABI,
-            ethers.provider
-        );
+        const erc20Recorder = await ethers.getContractAt("ERC20Recorder", erc20RecorderAddress);
 
         const layer2s = JSON.parse(await fs.readFileSync("./data/layer2s.json"));
         const stakers = JSON.parse(await fs.readFileSync("./data/stakers.json"));
         const stakesOfAllUsers = JSON.parse(await fs.readFileSync("./data/stakesOfAllUsers.json"));
-      
-      
+            
         let accounts = [];
         let amounts = [];
         for (const staker of stakers) {
