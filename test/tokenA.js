@@ -62,9 +62,7 @@ describe("ERC20TokenA", function () {
         tokens[i].admin = accounts[i];
         tokens[i].contract = await ERC20A.connect(tokens[i].admin).deploy(
           tokens[i].name,
-          tokens[i].symbol,
-          tokens[i].totalSupply,
-          tokens[i].admin.address
+          tokens[i].symbol
           );
 
         let code = await tokens[i].admin.provider.getCode(tokens[i].contract.address);
@@ -73,6 +71,11 @@ describe("ERC20TokenA", function () {
         expect(await tokens[i].contract.name()).to.be.equal(tokens[i].name);
         expect(await tokens[i].contract.symbol()).to.be.equal(tokens[i].symbol);
         expect(await tokens[i].contract.decimals()).to.be.equal(tokens[i].decimals);
+
+        await tokens[i].contract.connect(tokens[i].admin).mint(tokens[i].admin.address, tokens[i].totalSupply);
+        // await tokens[i].contract.connect(tokens[i].admin).addOwner(tokens[i].admin.address);
+        // await tokens[i].contract.connect(tokens[i].admin).addOwner(tokens[i].admin.address);
+
         expect(await tokens[i].contract.totalSupply()).to.be.equal(tokens[i].totalSupply);
 
         expect(await tokens[i].contract.balanceOf(tokens[i].admin.address)).to.be.equal(tokens[i].totalSupply);

@@ -9,7 +9,7 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 contract ERC20AFactory is AccessControl, IERC20Factory {
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant SNAPSHOT_ROLE = keccak256("SNAPSHOT_ROLE");
-
+    //bytes32 public constant DEFAULT_ADMIN_ROLE = 0x00;
     event CreatedERC20A(address contractAddress, string name, string symbol);
 
     struct ContractInfo {
@@ -43,12 +43,19 @@ contract ERC20AFactory is AccessControl, IERC20Factory {
         require(bytes(name).length > 0,"name is empty");
         require(bytes(symbol).length > 0,"symbol is empty");
 
-        ERC20A token = new ERC20A(name, symbol, initialSupply, owner);
+        ERC20A token = new ERC20A(name, symbol);
 
         require(
             address(token) != address(0),
             "token zero"
         );
+
+        if(initialSupply > 0) token.mint(owner, initialSupply);
+        token.addOwner(owner);
+
+        token.renounceRole(SNAPSHOT_ROLE, address(this));
+        token.renounceRole(MINTER_ROLE, address(this));
+        token.renounceRole(DEFAULT_ADMIN_ROLE, address(this));
 
         createdContracts[totalCreatedContracts] = ContractInfo(address(token), name, symbol);
         totalCreatedContracts++;

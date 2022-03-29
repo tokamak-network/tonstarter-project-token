@@ -17,21 +17,29 @@ contract ERC20A is AccessControl, ERC20, ERC165A, ERC20ApproveAndCall, ERC20Perm
 
     constructor(
         string memory _name,
-        string memory _symbol,
-        uint256 initialSupply,
-        address _owner
+        string memory _symbol
     ) ERC20(_name, _symbol) ERC165A() ERC20Permit(_name, "1") {
-        _mint(_owner, initialSupply);
+        //_mint(_owner, initialSupply);
 
-        _setupRole(DEFAULT_ADMIN_ROLE, _owner);
-        _setupRole(MINTER_ROLE, _owner);
-        _setupRole(SNAPSHOT_ROLE, _owner);
+        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _setupRole(MINTER_ROLE, msg.sender);
+        _setupRole(SNAPSHOT_ROLE, msg.sender);
 
         _registerInterface(ERC20_RECEIVED);
     }
 
     function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
         return _supportedInterfaces[interfaceId] || super.supportsInterface(interfaceId);
+    }
+
+
+    function addOwner(address _owner)
+        external
+        onlyRole(MINTER_ROLE)
+    {
+        _setupRole(DEFAULT_ADMIN_ROLE, _owner);
+        _setupRole(MINTER_ROLE, _owner);
+        _setupRole(SNAPSHOT_ROLE, _owner);
     }
 
     function mint(address account, uint256 amount)
@@ -149,6 +157,7 @@ contract ERC20A is AccessControl, ERC20, ERC165A, ERC20ApproveAndCall, ERC20Perm
         return snapshotted ? value : totalSupply();
     }
 
+
     // Update balance and/or total supply snapshots before the values are modified. This is implemented
     // in the _beforeTokenTransfer hook, which is executed for _mint, _burn, and _transfer operations.
     function _beforeTokenTransfer(
@@ -172,6 +181,7 @@ contract ERC20A is AccessControl, ERC20, ERC165A, ERC20ApproveAndCall, ERC20Perm
             _updateAccountSnapshot(to);
         }
     }
+
 
     function _updateAccountSnapshot(address account) private {
         _updateSnapshot(getAccountBalanceSnapshots(account), balanceOf(account));

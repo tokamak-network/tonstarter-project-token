@@ -88,10 +88,10 @@ abstract contract ERC20Snapshot  {
         //return snapshotted ? value : totalSupply();
     }
 
-
+    /*
     // Update balance and/or total supply snapshots before the values are modified. This is implemented
     // in the _beforeTokenTransfer hook, which is executed for _mint, _burn, and _transfer operations.
-    /*
+
     function _beforeTokenTransfer(
         address from,
         address to,
