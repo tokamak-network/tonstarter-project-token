@@ -32,8 +32,9 @@ const createAgenda = async (daoAgendaManager, { target, sig, params, paramTypes 
     );
 
     let receipt = null;
+    const daoCommitteeAddress = "0x543550A8B8528A7Bcb4Ca42230F4a8C8117cdFDb";
     await (await ton.connect(creator).approveAndCall(
-        daoCommittee.address,
+        daoCommitteeAddress,
         agendaFee,
         param
     )).wait();
