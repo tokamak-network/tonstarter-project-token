@@ -1,5 +1,8 @@
 const fs = require("fs");
-
+function unmarshalString (str) {
+    if (str.slice(0, 2) === '0x') return str.slice(2);
+    return str;
+}
 const createAgenda = async (daoAgendaManager, { target, sig, params, paramTypes }, creator) => {
     let totalGasUsed = 0;
     const noticePeriod = await daoAgendaManager.minimumNoticePeriodSeconds();
