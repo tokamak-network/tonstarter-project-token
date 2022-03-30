@@ -25,7 +25,7 @@ async function validateTotalSupply() {
         const staked = stakesOfAllUsers[layer2][staker];
         totalSupply = totalSupply.add(staked);
       }
-      const coinageAddress = seigManager.coinages(layer2);
+      const coinageAddress = await seigManager.coinages(layer2);
   
       const autoRefactorCoinage = new ethers.Contract(
         coinageAddress,

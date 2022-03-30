@@ -58,7 +58,7 @@ const voteAgenda = async(candidateContract, candidate, agendaID, vote) => {
 }
 
 task("execute-agenda", "")
-    .addParam("agendaID", "")
+    .addParam("agendaId", "")
     .addParam("daoAgendaManagerAddress", "")
     .setAction(async ({ daoAgendaManagerAddress, agendaID }) => {
         const daoAgendaManagerABI = JSON.parse(await fs.readFileSync("./abi/daoAgendaManager.json")).abi;

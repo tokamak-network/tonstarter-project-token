@@ -16,7 +16,7 @@ async function getPlasmaContractsMainnet() {
     }
     const stakers = JSON.parse(await fs.readFileSync("./data/stakers.json"));
     const users = [];
-    for (let i = 0; i < 30 && i < stakers.length; ++i) {
+    for (let i = 0; i < 5 && i < stakers.length; ++i) {
         users.push(await impersonate(stakers[i]));
     }
     const tonHolderAddress = "0xe3531d70dc3d6123f62bc083a0b89d9a4e4fc148";

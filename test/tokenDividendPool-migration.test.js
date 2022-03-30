@@ -182,6 +182,16 @@ describe("TokenDividendPool Migration", function() {
         totalGasUsed += parseInt(receipt.gasUsed)    
         return totalGasUsed;
     } 
+    const deposit = async (user, layer2Name, depositAmount) => {
+        await (await wton.connect(owner).mint(user.address, depositAmount)).wait();
+        await (await wton.connect(user).approve(depositManager.address, depositAmount)).wait();
+        const allowance = await wton.allowance(user.address, depositManager.address);
+        expect(allowance).to.be.eq(depositAmount);
+        const balanceInitial = await tokenRecorder.balanceOf(user.address);
+        const receipt = await (await depositManager.connect(user).deposit(layer2Name, depositAmount)).wait();
+        const balanceLast = await tokenRecorder.balanceOf(user.address);
+        return parseInt(receipt.gasUsed);
+    }
 
     it("should deposit", async() => {
         let depositGasUsed = 0;
@@ -200,8 +210,8 @@ describe("TokenDividendPool Migration", function() {
         let withdrawCounter = 0;
         for (const user of users) {
             for (const layer2Name of layer2s) {
-                const balance = await seigManager.stakeOf(layer2Name, user.address);
-                const randomAmount = getRandom(1000);
+                // const balance = await seigManager.stakeOf(layer2Name, user.address);
+                // const randomAmount = getRandom(1000);
                 withdrawGasUsed += (await withdraw(user, layer2Name, 1000000));
                 withdrawCounter += 1;
             }
@@ -232,16 +242,7 @@ describe("TokenDividendPool Migration", function() {
         }
     });
 
-    const deposit = async (user, layer2Name, depositAmount) => {
-        await (await wton.connect(owner).mint(user.address, depositAmount)).wait();
-        await (await wton.connect(user).approve(depositManager.address, depositAmount)).wait();
-        const allowance = await wton.allowance(user.address, depositManager.address);
-        expect(allowance).to.be.eq(depositAmount);
-        const balanceInitial = await tokenRecorder.balanceOf(user.address);
-        const receipt = await (await depositManager.connect(user).deposit(layer2Name, depositAmount)).wait();
-        const balanceLast = await tokenRecorder.balanceOf(user.address);
-        return parseInt(receipt.gasUsed);
-    }
+
 
     const withdraw = async (user, layer2Name, amount) => {
         const balanceInitial = await tokenRecorder.balanceOf(user.address);
@@ -253,6 +254,7 @@ describe("TokenDividendPool Migration", function() {
     const sleep = async (ms) => {
         return new Promise((resolve) => setTimeout(resolve, ms));
     }
+
     it("should mint from saved data", async () => {        
         let accounts = [];
         let amounts = [];
@@ -273,7 +275,7 @@ describe("TokenDividendPool Migration", function() {
             }
             
             accounts.push(staker);
-            amounts.push(totalStaked.div(ethers.BigNumber.from(1000000000)).toString());
+            amounts.push(totalStaked.toString());
 
             // if (accounts.length == 100) {
             //     console.log(accounts.length);
@@ -326,6 +328,10 @@ describe("TokenDividendPool Migration", function() {
             }
             expect(await tokenRecorder.balanceOf(staker)).to.be.eq(totalStaked);
         }
+
+        const totAddress = await seigManager.tot();
+        const tot = await ethers.getContractAt("AutoRefactorCoinage", totAddress);
+        // expect(await tot.totalSupply()).to.be.eq(await tokenRecorder.totalSupply());
     });
 
     it("should upgrade power ton", async () => {
