@@ -4,7 +4,7 @@ const fs = require('fs');
 
 async function getLayer2s() {
   const layer2RegistryAddress = "0x0b3E174A2170083e770D5d4Cf56774D221b7063e";
-  const layer2RegistryABI = JSON.parse(await fs.readFileSync("./abi/layer2Registry.json")).result;
+  const layer2RegistryABI = JSON.parse(await fs.readFileSync("./abi/layer2Registry.json")).abi;
 
   const layer2Registry = new ethers.Contract(
     layer2RegistryAddress,
@@ -55,7 +55,7 @@ async function getTONStakers() {
 
 async function getStakeOfAllUsers() {
   const seigManagerAddress = "0x710936500aC59e8551331871Cbad3D33d5e0D909";
-  const seigManagerABI = JSON.parse(await fs.readFileSync("./abi/seigManager.json")).result;
+  const seigManagerABI = JSON.parse(await fs.readFileSync("./abi/seigManager.json")).abi;
 
   const seigManager = new ethers.Contract(
     seigManagerAddress,
@@ -84,7 +84,6 @@ async function getStakeOfAllUsers() {
 }
 
 async function main() {
-  await getStakeOfAllUsers();
   // await getLayer2s();
   // await getTONStakers();
   // await getStakeOfAllUsers();
