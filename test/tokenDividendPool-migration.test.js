@@ -6,6 +6,7 @@ const { getPlasmaContractsMainnet } = require("./helpers/get-plasma-contracts");
 const { time } = require("@openzeppelin/test-helpers");
 const UniswapEnv = require("./uniswap/uniswap-env");
 const balance = require("@openzeppelin/test-helpers/src/balance");
+const { getLayer2List, getStakersList, getTONStakedAmount, erc20RecorderMint } = require("./helpers/ton-stakers");
 
 describe("TokenDividendPool Migration", function() {
     let admin, distributor, depositManager, user1, user2, user3, user4, user5, user6;
@@ -38,18 +39,6 @@ describe("TokenDividendPool Migration", function() {
     let candidates;
 
     before(async () => {
-        await network.provider.request({
-            method: "hardhat_reset",
-            params: [
-              {
-                forking: {
-                  jsonRpcUrl: "https://mainnet.infura.io/v3/27113ffbad864e8ba47c7d993a738a10",
-                  blockNumber: 14215307,
-                },
-              },
-            ],
-        });
-
           
         layer2s = JSON.parse(await fs.readFileSync("./data/layer2s.json"));
         stakers = JSON.parse(await fs.readFileSync("./data/stakers.json"));
@@ -194,29 +183,29 @@ describe("TokenDividendPool Migration", function() {
     }
 
     it("should deposit", async() => {
-        let depositGasUsed = 0;
-        let depositCounter = 0;
-        for (const user of users) {
-            for (const layer2Name of layer2s) {
-                depositGasUsed += await deposit(user, layer2Name, 100000000);
-                depositCounter += 1;
-            }
-        }
-        gasUsedInfo['depositBeforeAverage'] = depositGasUsed / depositCounter;
+        // let depositGasUsed = 0;
+        // let depositCounter = 0;
+        // for (const user of users) {
+        //     for (const layer2Name of layer2s) {
+        //         depositGasUsed += await deposit(user, layer2Name, 100000000);
+        //         depositCounter += 1;
+        //     }
+        // }
+        // gasUsedInfo['depositBeforeAverage'] = depositGasUsed / depositCounter;
     });
 
     it("should withdraw", async() => {
-        let withdrawGasUsed = 0;
-        let withdrawCounter = 0;
-        for (const user of users) {
-            for (const layer2Name of layer2s) {
-                // const balance = await seigManager.stakeOf(layer2Name, user.address);
-                // const randomAmount = getRandom(1000);
-                withdrawGasUsed += (await withdraw(user, layer2Name, 1000000));
-                withdrawCounter += 1;
-            }
-        }        
-        gasUsedInfo['withdrawBeforeAverage'] = withdrawGasUsed / withdrawCounter;
+        // let withdrawGasUsed = 0;
+        // let withdrawCounter = 0;
+        // for (const user of users) {
+        //     for (const layer2Name of layer2s) {
+        //         // const balance = await seigManager.stakeOf(layer2Name, user.address);
+        //         // const randomAmount = getRandom(1000);
+        //         withdrawGasUsed += (await withdraw(user, layer2Name, 1000000));
+        //         withdrawCounter += 1;
+        //     }
+        // }        
+        // gasUsedInfo['withdrawBeforeAverage'] = withdrawGasUsed / withdrawCounter;
     });
 
 
@@ -242,8 +231,6 @@ describe("TokenDividendPool Migration", function() {
         }
     });
 
-
-
     const withdraw = async (user, layer2Name, amount) => {
         const balanceInitial = await tokenRecorder.balanceOf(user.address);
         const receipt = await (await depositManager.connect(user).requestWithdrawal(layer2Name, amount)).wait();        
@@ -255,7 +242,11 @@ describe("TokenDividendPool Migration", function() {
         return new Promise((resolve) => setTimeout(resolve, ms));
     }
 
-    it("should mint from saved data", async () => {        
+    it("should mint from saved data", async () => {  
+        // await getLayer2List(layer2Registry.address);
+        // await getStakersList(depositManager.address, 14215307);
+        // await getTONStakedAmount(seigManager.address);
+        // await erc20RecorderMint(tokenRecorder.address);
         let accounts = [];
         let amounts = [];
         const [admin] = await ethers.getSigners();
@@ -331,6 +322,7 @@ describe("TokenDividendPool Migration", function() {
 
         const totAddress = await seigManager.tot();
         const tot = await ethers.getContractAt("AutoRefactorCoinage", totAddress);
+        console.log(await tot.totalSupply(), await tokenRecorder.totalSupply())
         // expect(await tot.totalSupply()).to.be.eq(await tokenRecorder.totalSupply());
     });
 
