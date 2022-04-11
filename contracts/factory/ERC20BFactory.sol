@@ -38,7 +38,7 @@ contract ERC20BFactory is AccessControl, IERC20Factory {
         string calldata symbol,
         uint256 initialSupply,
         address owner
-    ) external onlyRole(MINTER_ROLE) override returns (address) {
+    ) external override returns (address) {
         require(owner != address(0),"owner is zero");
         require(bytes(name).length > 0,"name is empty");
         require(bytes(symbol).length > 0,"symbol is empty");
