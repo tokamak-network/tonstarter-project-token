@@ -18,7 +18,7 @@ module.exports = {
       forking: {
         url: "https://mainnet.infura.io/v3/27113ffbad864e8ba47c7d993a738a10",
         blockNumber: 14215307,
-      }
+      },
     },
     rinkeby: {
       url: `https://rinkeby.infura.io/v3/${process.env.INFURA_API_KEY}`,
@@ -32,7 +32,7 @@ module.exports = {
     },
   },
   localhost: {
-    timeout: 100000000
+    timeout: 100000000,
   },
   etherscan: {
     apiKey: process.env.ETHERSCAN_API_KEY,
