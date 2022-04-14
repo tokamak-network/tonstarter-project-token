@@ -1,3 +1,8 @@
+const {
+    keccak256,
+  } = require("web3-utils");
+
+
 task("deploy-erc20-recorder", "")
     // .addParam("ownerAddress", "")
     .addParam("depositManagerAddress", "Deposit Manager")
@@ -20,7 +25,8 @@ task("deploy-erc20-recorder", "")
         });
     });
 
-task("deploy-token-dividend-pool","")
+
+    task("deploy-token-dividend-pool","")
     .addParam("erc20RecorderAddress", "ERC20 Recorder")
     .setAction(async function({ erc20RecorderAddress }) {
       const [admin] = await ethers.getSigners();
@@ -64,15 +70,45 @@ task("deploy-power-ton-swapper", "")
       layer2RegistryAddress,
       seigManagerAddress,
     }) {
+
         const [admin] = await ethers.getSigners()
         const powerTON = await (await ethers.getContractFactory("PowerTONSwapper"))
             .connect(admin)
             .deploy(wtonAddress, tosAddress, uniswapRouterAddress, erc20RecorderAddress, layer2RegistryAddress, seigManagerAddress);
         await powerTON.deployed();
         // await (await powerTON.connect(admin).init()).wait();
+
+        console.log("PowerTONSwapper Deployed:", powerTON.address);
+
         await run("verify", {
           address: powerTON.address,
           constructorArgsParams: [wtonAddress, tosAddress, uniswapRouterAddress, erc20RecorderAddress, layer2RegistryAddress, seigManagerAddress],
          });
+
     });
 
+
+task("set-erc20-recorder", "")
+    .addParam("erc20RecorderAddress", "")
+    .addParam("powerTon", "")
+    .addParam("tokenDividendPoolAddress", "")
+    .setAction(async ({  erc20RecorderAddress, powerTon, tokenDividendPoolAddress }) => {
+
+        const [admin] = await ethers.getSigners()
+        const erc20Recorder = await ethers.getContractAt("ERC20Recorder", erc20RecorderAddress) ;
+
+        let SNAPSHOT_ROLE = keccak256("SNAPSHOT_ROLE");
+        let MINTER_ROLE = keccak256("MINTER_ROLE");
+        let BURNER_ROLE = keccak256("BURNER_ROLE");
+
+
+        let tx = await erc20Recorder.connect(admin).grantRole(MINTER_ROLE, powerTon);
+        let tx1 = await erc20Recorder.connect(admin).grantRole(BURNER_ROLE, powerTon);
+        let tx2 = await erc20Recorder.connect(admin).grantRole(SNAPSHOT_ROLE, tokenDividendPoolAddress);
+
+
+        console.log('grantRole MINTER_ROLE ', tx.hash);
+        console.log('grantRole BURNER_ROLE ', tx1.hash);
+        console.log('grantRole SNAPSHOT_ROLE ', tx2.hash);
+
+    });

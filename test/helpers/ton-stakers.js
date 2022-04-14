@@ -10,7 +10,8 @@ const getLayer2List = async (layer2RegistryAddress) => {
     const layer2s = []
     const numberOfLayer2s = await layer2Registry.numLayer2s()
     for (let i = 0; i < numberOfLayer2s; i++) {
-        layer2s.push(await layer2Registry.layer2ByIndex(i))
+        let layerName = await layer2Registry.layer2ByIndex(i);
+        layer2s.push(layerName.toLowerCase());
     }
     console.log("length: ", layer2s.length);
     await fs.writeFileSync("./data/layer2s.json", JSON.stringify(layer2s));
@@ -18,6 +19,7 @@ const getLayer2List = async (layer2RegistryAddress) => {
 }
 
 const getStakersList = async (depositManagerAddress, blockNumber) => {
+    //https://daoapi.tokamak.network/v1/users?chainId=1&pagsize=10000
     const stakers = [];
     const abi = [ "event Deposited(address indexed layer2, address depositor, uint256 amount)" ];
     const iface = new ethers.utils.Interface(abi);
@@ -28,19 +30,28 @@ const getStakersList = async (depositManagerAddress, blockNumber) => {
       toBlock: parseInt(blockNumber),
       topics: [ethers.utils.id("Deposited(address,address,uint256)")]
     };
-    const txs = await ethers.provider.getLogs(filter);
 
-    for (const tx of txs) {
-      const { transactionHash } = tx;
-      const { logs } = await ethers.provider.getTransactionReceipt(transactionHash);
-      const foundLog = logs.find(el => el && el.topics && el.topics.includes(ethers.utils.id("Deposited(address,address,uint256)")));
-      if (!foundLog) continue;
-      const parsedlog = iface.parseLog(foundLog);
-      const { depositor } = parsedlog["args"];
-      stakers.push(depositor);
+    try{
+      const txs = await ethers.provider.getLogs(filter);
+      console.log("length: ", txs.length);
+
+      for (const tx of txs) {
+        const { transactionHash } = tx;
+        const { logs } = await ethers.provider.getTransactionReceipt(transactionHash);
+        const foundLog = logs.find(el => el && el.topics && el.topics.includes(ethers.utils.id("Deposited(address,address,uint256)")));
+        if (!foundLog) continue;
+        const parsedlog = iface.parseLog(foundLog);
+        let { depositor } = parsedlog["args"];
+        depositor = depositor.toLowerCase();
+        stakers.push(depositor);
+      }
+      console.log({ stakers });
+      console.log("length: ", stakers.length);
+
+    } catch(error){
+      console.log('getStakersList error',error);
     }
-    console.log({ stakers });
-    console.log("length: ", stakers.length);
+
     const stakersUnique = stakers.filter((v, idx, self) => self.indexOf(v) === idx);
     console.log("length: ", stakersUnique.length);
     await fs.writeFileSync("./data/stakers.json", JSON.stringify(stakersUnique));
@@ -48,7 +59,7 @@ const getStakersList = async (depositManagerAddress, blockNumber) => {
 }
 
 const getTONStakedAmount = async (seigManagerAddress) => {
-    const seigManagerABI = require("../abi/seigManager.json").abi;
+    const seigManagerABI = require("../../abi/seigManager.json").abi;
     const seigManager = new ethers.Contract(
         seigManagerAddress,
         seigManagerABI,
@@ -75,8 +86,8 @@ const getTONStakedAmount = async (seigManagerAddress) => {
     }
 
     await fs.writeFileSync("./data/stakesOfAllUsers.json", JSON.stringify(output));
-
 }
+
 const erc20RecorderMint = async (erc20RecorderAddress) => {
     const [admin] = await ethers.getSigners();
     const erc20Recorder = await ethers.getContractAt("ERC20Recorder", erc20RecorderAddress);
@@ -103,7 +114,12 @@ const erc20RecorderMint = async (erc20RecorderAddress) => {
       }
 
       accounts.push(staker);
-      amounts.push(totalStaked);
+
+      let totalStakedWei = ethers.utils.formatUnits(totalStaked, 9);
+      let end = Math.min(totalStakedWei.indexOf('.'), totalStakedWei.length) ;
+      //console.log(totalStakedWei.substring(0,end));
+      amounts.push(totalStakedWei.substring(0,end));
+      //amounts.push(totalStakedWei);
     }
 
     if (accounts.length > 0) {

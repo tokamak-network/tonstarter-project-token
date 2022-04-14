@@ -81,6 +81,34 @@ task("execute-agenda", "")
         await executeAgenda(daoAgendaManager, agendaId, admin);
     });
 
+
+task("create-transfer-ownership-seig-manager-agenda", "")
+.addParam("daoAgendaManagerAddress", "")
+.addParam("newOwnerAddress", "")
+.addParam("seigManagerAddress", "")
+.setAction(async ({ daoAgendaManagerAddress, newOwnerAddress, seigManagerAddress }) => {
+    const daoAgendaManagerABI = JSON.parse(await fs.readFileSync("./abi/daoAgendaManager.json")).abi;
+    const daoAgendaManager = new ethers.Contract(
+        daoAgendaManagerAddress,
+        daoAgendaManagerABI,
+        ethers.provider
+    );
+
+    const args = {
+        target: seigManagerAddress,
+        sig: "transferOwnership(address)",
+        paramTypes: ["address"],
+        params: [newOwnerAddress]
+    }
+    console.log("seigManagerAddress:", seigManagerAddress);
+    console.log("newOwnerAddress:", newOwnerAddress);
+
+    const [admin] = await ethers.getSigners()
+    const { agendaID } = await createAgenda(daoAgendaManager, args, admin);
+    console.log("Agenda Created:", agendaID);
+});
+
+
 task("create-set-seig-manager-agenda", "")
     .addParam("daoAgendaManagerAddress", "")
     .addParam("depositManagerAddress", "")
@@ -189,3 +217,88 @@ task("get-stake-tot-of-seig-manager", "")
     });
 
 
+
+task("get-onwer-of-seig-manager", "")
+    .addParam("seigManagerAddress", "")
+    .setAction(async ({ seigManagerAddress }) => {
+        const seigManagerABI = JSON.parse(await fs.readFileSync("./abi/seigManager.json")).abi;
+        const seigManager = new ethers.Contract(
+            seigManagerAddress,
+            seigManagerABI,
+            ethers.provider
+        );
+        const owner = await seigManager.owner();
+
+        console.log("owner of seigManagerAddress :", owner);
+    });
+
+    /*
+task("is-pauser-of-seig-manager", "")
+    .addParam("seigManagerAddress", "")
+    .addParam("account", "")
+    .setAction(async ({ seigManagerAddress, account }) => {
+        const seigManagerABI = JSON.parse(await fs.readFileSync("./abi/seigManager.json")).abi;
+        const seigManager = new ethers.Contract(
+            seigManagerAddress,
+            seigManagerABI,
+            ethers.provider
+        );
+        const isPauser = await seigManager.isPauser(account);
+
+        console.log("isPauser of seigManagerAddress :", account, isPauser);
+    });
+
+
+task("add-pauser-of-seig-manager", "")
+    .addParam("seigManagerAddress", "")
+    .addParam("account", "")
+    .setAction(async ({ seigManagerAddress, account }) => {
+        const seigManagerABI = JSON.parse(await fs.readFileSync("./abi/seigManager.json")).abi;
+        const seigManager = new ethers.Contract(
+            seigManagerAddress,
+            seigManagerABI,
+            ethers.provider
+        );
+        const addPauser = await seigManager.addPauser(account);
+
+        console.log("addPauser of seigManagerAddress :", account, isPauser);
+    });
+    */
+
+task("set-zero-power-ton-of-seig-manager", "")
+    .addParam("seigManagerAddress", "")
+    .addParam("dummyAddress", "")
+    .setAction(async ({ seigManagerAddress, dummyAddress }) => {
+        const seigManagerABI = JSON.parse(await fs.readFileSync("./abi/seigManager.json")).abi;
+        const seigManager = new ethers.Contract(
+            seigManagerAddress,
+            seigManagerABI,
+            ethers.provider
+        );
+
+        const [admin] = await ethers.getSigners()
+
+
+        const tx = await seigManager.connect(admin).setPowerTON(dummyAddress);
+
+        console.log("setPowerTON of seigManagerAddress :", tx.hash);
+    });
+
+task("transfer-owner-of-seig-manager", "")
+    .addParam("seigManagerAddress", "")
+    .addParam("newOwner", "")
+    .setAction(async ({ seigManagerAddress, newOwner }) => {
+        const seigManagerABI = JSON.parse(await fs.readFileSync("./abi/seigManager.json")).abi;
+        const seigManager = new ethers.Contract(
+            seigManagerAddress,
+            seigManagerABI,
+            ethers.provider
+        );
+
+        const [admin] = await ethers.getSigners()
+
+        //const tx = await seigManager.connect(admin).transferOwnership(newOwner);
+        const tx = await seigManager.connect(admin)["transferOwnership(address)"](newOwner);
+
+        console.log("transferOwnership of seigManagerAddress :", tx.hash);
+    });

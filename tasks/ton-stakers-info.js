@@ -44,7 +44,7 @@ task("update-seig", "")
             },
           ],
       });
-      
+
       const impersonate = async (account) => {
         await network.provider.request({
             method: "hardhat_impersonateAccount",
@@ -64,8 +64,99 @@ task("update-seig", "")
           seigManagerABI,
           ethers.provider
       );
-  
+
       const coinageAddress = "0x39A13a796A3Cd9f480C28259230D2EF0a7026033";
       const coinage = await impersonate(coinageAddress);
       const receipt = await (await seigManager.connect(coinage).updateSeigniorage()).wait();
     })
+
+
+
+task("display-ton-staked-amount", "Retrieve and save accounts and their staked amounts")
+  .addParam("seigManagerAddress", "Seig Manager Address")
+  .addParam("accountAddress", "")
+  .setAction(async ({ seigManagerAddress, accountAddress }) => {
+
+
+    const seigManagerABI = JSON.parse(await fs.readFileSync("./abi/seigManager.json")).abi;
+    const seigManager = new ethers.Contract(
+        seigManagerAddress,
+        seigManagerABI,
+        ethers.provider
+    );
+
+    const layer2s = JSON.parse(await fs.readFileSync("./data/layer2s.json"));
+    const stakers = JSON.parse(await fs.readFileSync("./data/stakers.json"));
+    const output = JSON.parse(await fs.readFileSync("./data/stakesOfAllUsers.json"));
+    let totalStaked = ethers.BigNumber.from(0);
+
+    for (const layer2 of layer2s) {
+        let staker = accountAddress;
+        //for (const staker of stakers) {
+            //console.log(layer2, staker, output[layer2][staker]);
+
+            if (!output[layer2])
+                output[layer2] = {};
+
+            const staked = (await seigManager.stakeOf(layer2, staker)).toString();
+            if (staked) {
+              totalStaked = totalStaked.add(ethers.BigNumber.from(staked));
+            }
+            console.log(layer2, staker, staked, totalStaked);
+       // }
+    }
+
+    console.log(totalStaked);
+
+    let totalStakedWei = ethers.utils.formatUnits(totalStaked, 9);
+    console.log(totalStakedWei);
+    let end = Math.min(totalStakedWei.indexOf('.'), totalStakedWei.length) ;
+    console.log(totalStakedWei.substring(0,end));
+
+  })
+
+
+  task("review-ton-staked-amount", "Retrieve and save accounts and their staked amounts")
+  .addParam("seigManagerAddress", "Seig Manager Address")
+  .addParam("accountAddress", "")
+  .setAction(async ({ seigManagerAddress, accountAddress }) => {
+
+
+    const seigManagerABI = JSON.parse(await fs.readFileSync("./abi/seigManager.json")).abi;
+    const seigManager = new ethers.Contract(
+        seigManagerAddress,
+        seigManagerABI,
+        ethers.provider
+    );
+
+    const layer2s = JSON.parse(await fs.readFileSync("./data/layer2s.json"));
+    const stakers = JSON.parse(await fs.readFileSync("./data/stakers.json"));
+    const output = JSON.parse(await fs.readFileSync("./data/stakesOfAllUsers.json"));
+
+    let totalStaked = ethers.BigNumber.from(0);
+
+    for (const layer2 of layer2s) {
+        let staker = accountAddress;
+
+        if (!output[layer2])
+            output[layer2] = {};
+        // if (output[layer2][staker]) {
+        //     continue;
+        // }
+
+        const staked = output[layer2][staker];
+        if (staked) {
+          totalStaked = totalStaked.add(ethers.BigNumber.from(staked));
+        }
+        console.log(layer2, staker, staked, totalStaked);
+
+    }
+
+    console.log(totalStaked);
+
+    let totalStakedWei = ethers.utils.formatUnits(totalStaked, 9);
+    console.log(totalStakedWei);
+    let end = Math.min(totalStakedWei.indexOf('.'), totalStakedWei.length) ;
+    console.log(totalStakedWei.substring(0,end));
+
+  })
