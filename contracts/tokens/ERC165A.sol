@@ -21,11 +21,16 @@ contract ERC165A  {
      *     => 0x18160ddd ^ 0x70a08231 ^ 0xa9059cbb ^ 0xdd62ed3e ^ 0x095ea7b3 ^ 0x23b872dd ^ 0x423f6cef ^ 0xeb795549 ^ 0x42842e0e ^ 0xb88d4fde == 0x65787371
      */
     bytes4 public constant _INTERFACE_ID_ERC20 = 0x65787371;
+    /*
+     * bytes4(keccak256('supportsInterface(bytes4)')) == 0x01ffc9a7
+     */
+    bytes4 private constant _INTERFACE_ID_ERC165 = 0x01ffc9a7;
 
     mapping(bytes4 => bool) public _supportedInterfaces;
 
     constructor() {
         _registerInterface(_INTERFACE_ID_ERC20);
+        _registerInterface(_INTERFACE_ID_ERC165);
     }
 
 

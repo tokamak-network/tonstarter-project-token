@@ -3,38 +3,47 @@ pragma solidity >0.8.0;
 pragma experimental ABIEncoderV2;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { ITOS } from "./ITOS.sol";
+
 import { iPowerTON } from "./iPowerTON.sol";
-import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
+import "./IPowerTONSwapperEvent.sol";
+
 import "../interfaces/IIERC20.sol";
+
 import "./SeigManagerI.sol";
 import "./Layer2RegistryI.sol";
-import "hardhat/console.sol";
 import "./AutoRefactorCoinageI.sol";
 
-contract PowerTONSwapper is iPowerTON {
-    address public override wton;
-    ITOS public tos;
-    ISwapRouter public uniswapRouter;
-    address public erc20Recorder;
-    address public layer2Registry;
-    address public override seigManager;
+import "../common/AccessibleCommon.sol";
+import "./PowerTONSwapperStorage.sol";
+//import "hardhat/console.sol";
 
-    event OnDeposit(address layer2, address indexed account, uint256 amount, uint256 amountToMint);
-    event OnWithdraw(address layer2, address indexed account, uint256 amount, uint256 amountToMint);
+contract PowerTONSwapper is
+    PowerTONSwapperStorage,
+    AccessibleCommon,
+    iPowerTON,
+    IPowerTONSwapperEvent
+{
+    modifier onlySeigManagerOrOwner() {
+        require(
+            isAdmin(msg.sender) ||
+            msg.sender == seigManager,
+            "PowerTONSwapper: sender is not seigManager or not admin");
+        _;
+    }
 
-    event Swapped(
-        uint256 amount
-    );
+    constructor()
+    {
+    }
 
-    constructor(
+    function setInfo(
         address _wton,
         address _tos,
         address _uniswapRouter,
         address _erc20Recorder,
         address _layer2Registry,
         address _seigManager
-    )
+        )
+        external onlyOwner
     {
         wton = _wton;
         tos = ITOS(_tos);
@@ -114,27 +123,78 @@ contract PowerTONSwapper is iPowerTON {
     function endRound() external override {
     }
 
-    function onDeposit(address layer2, address account, uint256 amount) external override {
-        address totAddress = SeigManagerI(seigManager).tot();
-        uint256 coinageTotalSupplyBefore = AutoRefactorCoinageI(totAddress).totalSupply() - amount;
-        uint256 totalSupply = IIERC20(erc20Recorder).totalSupply();
-        uint256 amountToMint = amount * totalSupply / coinageTotalSupplyBefore;
-        console.log("coinageTotalSupplyBefore: %s, totalsupply: %s", coinageTotalSupplyBefore, totalSupply);
-        console.log("Amount: %s, Amount to mint: %s", amount, amountToMint);
-        IIERC20(erc20Recorder).mint(account, amountToMint);
+    function onDeposit(address layer2, address account, uint256 amount)
+        external override onlySeigManagerOrOwner
+    {
+        (uint256 amountToMint, uint256 amountToBurn) = isChangeAmountInRecoder(layer2, account, amount);
+
+        onChangeAmountInRecoder(account, amountToMint, amountToBurn);
         emit OnDeposit(layer2, account, amount, amountToMint);
     }
 
-    function onWithdraw(address layer2, address account, uint256 amount) external override {
-        address totAddress = SeigManagerI(seigManager).tot();
-        uint256 coinageTotalSupplyBefore = AutoRefactorCoinageI(totAddress).totalSupply() + amount;
-        uint256 totalSupply = IIERC20(erc20Recorder).totalSupply();
-        uint256 amountToBurn = amount * totalSupply / coinageTotalSupplyBefore;
-        console.log("coinageTotalSupplyBefore: %s, totalsupply: %s", coinageTotalSupplyBefore, totalSupply);
-        console.log("Amount: %s, Amount to burn: %s", amount, amountToBurn);
-        IIERC20(erc20Recorder).burnFrom(account, amountToBurn);
+
+    function onWithdraw(address layer2, address account, uint256 amount)
+        external override onlySeigManagerOrOwner
+    {
+        (uint256 amountToMint, uint256 amountToBurn) = isChangeAmountInRecoder(layer2, account, amount);
+
+        onChangeAmountInRecoder(account, amountToMint, amountToBurn);
         emit OnWithdraw(layer2, account, amount, amountToBurn);
     }
+
+    function onChangeAmountInRecoder(address account, uint256 amountToMint, uint256 amountToBurn)
+        internal
+    {
+        if(amountToMint > 0) {
+            IIERC20(erc20Recorder).mint(account, amountToMint);
+
+        }else if(amountToBurn > 0){
+             IIERC20(erc20Recorder).burnFrom(account, amountToBurn);
+        }
+    }
+
+    // 사용자가 토카막에 스테이킹한 굼약
+    function userTONStakedAmountInTokamak(address account)
+        public
+        returns (uint256 userTotalBalanceRay, uint256 userTotalBalanceWei)
+    {
+        uint256 num = Layer2RegistryI(layer2Registry).numLayer2s();
+        userTotalBalanceRay = 0;
+        for (uint256 i = 0; i < num; ++i) {
+            address layer2Address = Layer2RegistryI(layer2Registry).layer2ByIndex(i);
+            userTotalBalanceRay += SeigManagerI(seigManager).stakeOf(
+                layer2Address,
+                account
+            );
+        }
+
+        userTotalBalanceWei = 0;
+        if(userTotalBalanceRay > 0) userTotalBalanceWei = userTotalBalanceRay / 1e9;
+    }
+
+    // 사용자가 토카막에서 스테이킹양이 증가될때, 레코더에서 증가시킬양
+    function isChangeAmountInRecoder(address layer2, address account, uint256 amount)
+        public
+        returns (uint256 amountToMint, uint256 amountToBurn)
+    {
+        // 추가된 금액에 상관없이, 현재 토카막에 스테이킹된 비율과 레코더의 비율을 같게하자.
+        address totAddress = SeigManagerI(seigManager).tot();
+        uint256 totTotalSupplyRay= AutoRefactorCoinageI(totAddress).totalSupply();
+        (uint256 userTotalBalanceRay, uint256 userTotalBalanceWei) = userTONStakedAmountInTokamak(account);
+
+        uint256 recoderTotalSupply = IIERC20(erc20Recorder).totalSupply();
+        uint256 recoderUserBalance = IIERC20(erc20Recorder).balanceOf(account);
+
+        amountToMint = 0;
+        amountToBurn = 0;
+        uint256 userNeedBalance = 0 ;
+
+        if(totTotalSupplyRay > 0) userNeedBalance = recoderTotalSupply * userTotalBalanceRay / totTotalSupplyRay ;
+
+        if(recoderUserBalance < userNeedBalance) amountToMint = userNeedBalance - recoderUserBalance;
+        if(recoderUserBalance > userNeedBalance) amountToBurn = recoderUserBalance - userNeedBalance;
+    }
+
 }
 
 /*
@@ -147,7 +207,7 @@ B = B1
 
 A1 / B1 = C1
 
-A / B = C 
+A / B = C
 
 k / B1 + A1 / B1 = C
 

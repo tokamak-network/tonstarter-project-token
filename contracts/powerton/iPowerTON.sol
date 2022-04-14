@@ -2,8 +2,8 @@
 pragma solidity >0.8.0;
 
 interface iPowerTON {
-  function seigManager() external view returns (address);
-  function wton() external view returns (address);
+  //function seigManager() external view returns (address);
+  //function wton() external view returns (address);
 
   function currentRound() external view returns (uint256);
   function roundDuration() external view returns (uint256);
