@@ -1,16 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import "@openzeppelin/contracts/token/ERC721/IERC721Metadata.sol";
-import "@openzeppelin/contracts/token/ERC721/IERC721Enumerable.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/IERC721Enumerable.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 
-import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 
+import "../libraries/Base64.sol";
 import "./ProjectTokenStorage.sol";
 /**
  * @title ERC721 Non-Fungible Token Standard basic implementation
@@ -27,7 +29,7 @@ contract ProjectToken is ProjectTokenStorage, IERC721, IERC721Metadata, IERC721E
     /**
      * @dev Initializes the contract by setting a `name` and a `symbol` to the token collection.
      */
-    constructor (string memory name_, string memory symbol_)  {
+    constructor (string memory name_, string memory symbol_) {
         _name = name_;
         _symbol = symbol_;
 
@@ -109,10 +111,32 @@ contract ProjectToken is ProjectTokenStorage, IERC721, IERC721Metadata, IERC721E
         return string(abi.encodePacked(base, tokenId.toString()));
     }
     */
+    function toString(uint256 value) internal pure returns (string memory) {
+    // Inspired by OraclizeAPI's implementation - MIT license
+    // https://github.com/oraclize/ethereum-api/blob/b42146b063c7d6ee1358846c198246239e9360e8/oraclizeAPI_0.4.25.sol
+
+        if (value == 0) {
+            return "0";
+        }
+        uint256 temp = value;
+        uint256 digits;
+        while (temp != 0) {
+            digits++;
+            temp /= 10;
+        }
+        bytes memory buffer = new bytes(digits);
+        while (value != 0) {
+            digits -= 1;
+            buffer[digits] = bytes1(uint8(48 + uint256(value % 10)));
+            value /= 10;
+        }
+        return string(buffer);
+    }
+
     function tokenURI(uint256 tokenId) public view virtual override returns (string memory) {
         require(_exists(tokenId), "ProjectToken: URI query for nonexistent token");
 
-        string memory _tokenURI = _tokenURIs[tokenId]; //'{"name": "","name": ""}'
+        //string memory _tokenURI = _tokenURIs[tokenId];
         //string memory base = baseURI();
         string[17] memory parts;
         parts[0] = '<svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMinYMin meet" viewBox="0 0 350 350"><style>.base { fill: white; font-family: serif; font-size: 14px; }</style><rect width="100%" height="100%" fill="black" />';
@@ -228,7 +252,7 @@ contract ProjectToken is ProjectTokenStorage, IERC721, IERC721Metadata, IERC721E
         address owner = ownerOf(tokenId);
         require(to != owner, "ProjectToken: approval to current owner");
 
-        require(_msgSender() == owner || isApprovedForAll(owner, _msgSender()),
+        require(msg.sender == owner || isApprovedForAll(owner, msg.sender),
             "ProjectToken: approve caller is not owner nor approved for all"
         );
 
@@ -248,10 +272,10 @@ contract ProjectToken is ProjectTokenStorage, IERC721, IERC721Metadata, IERC721E
      * @dev See {IERC721-setApprovalForAll}.
      */
     function setApprovalForAll(address operator, bool approved) public virtual override {
-        require(operator != _msgSender(), "ProjectToken: approve to caller");
+        require(operator != msg.sender, "ProjectToken: approve to caller");
 
-        _operatorApprovals[_msgSender()][operator] = approved;
-        emit ApprovalForAll(_msgSender(), operator, approved);
+        _operatorApprovals[msg.sender][operator] = approved;
+        emit ApprovalForAll(msg.sender, operator, approved);
     }
 
     /**
@@ -266,7 +290,7 @@ contract ProjectToken is ProjectTokenStorage, IERC721, IERC721Metadata, IERC721E
      */
     function transferFrom(address from, address to, uint256 tokenId) public virtual override {
         //solhint-disable-next-line max-line-length
-        require(_isApprovedOrOwner(_msgSender(), tokenId), "ProjectToken: transfer caller is not owner nor approved");
+        require(_isApprovedOrOwner(msg.sender, tokenId), "ProjectToken: transfer caller is not owner nor approved");
 
         _transfer(from, to, tokenId);
     }
@@ -282,7 +306,7 @@ contract ProjectToken is ProjectTokenStorage, IERC721, IERC721Metadata, IERC721E
      * @dev See {IERC721-safeTransferFrom}.
      */
     function safeTransferFrom(address from, address to, uint256 tokenId, bytes memory _data) public virtual override {
-        require(_isApprovedOrOwner(_msgSender(), tokenId), "ProjectToken: transfer caller is not owner nor approved");
+        require(_isApprovedOrOwner(msg.sender, tokenId), "ProjectToken: transfer caller is not owner nor approved");
         _safeTransfer(from, to, tokenId, _data);
     }
 
@@ -599,7 +623,7 @@ contract ProjectToken is ProjectTokenStorage, IERC721, IERC721Metadata, IERC721E
         }
         bytes memory returndata = to.functionCall(abi.encodeWithSelector(
             IERC721Receiver(to).onERC721Received.selector,
-            _msgSender(),
+            msg.sender,
             from,
             tokenId,
             _data
