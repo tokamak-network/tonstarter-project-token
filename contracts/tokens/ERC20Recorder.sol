@@ -9,19 +9,19 @@ contract ERC20Recorder is ERC20, ERC20Snapshot, AccessControl {
     bytes32 public constant SNAPSHOT_ROLE = keccak256("SNAPSHOT_ROLE");
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");
-    
+
     constructor(
         string memory _name,
         string memory _symbol,
         address _owner,
-        address _depositManager
+        address _powerTONSwapper
     ) ERC20(_name, _symbol) {
         _setupRole(DEFAULT_ADMIN_ROLE, _owner);
         _setupRole(SNAPSHOT_ROLE, _owner);
         _setupRole(MINTER_ROLE, _owner);
 
-        _setupRole(MINTER_ROLE, _depositManager);
-        _setupRole(BURNER_ROLE, _depositManager);
+        _setupRole(MINTER_ROLE, _powerTONSwapper);
+        _setupRole(BURNER_ROLE, _powerTONSwapper);
     }
 
     /**

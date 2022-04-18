@@ -1,8 +1,9 @@
+// SPDX-License-Identifier: MIT
 pragma solidity >0.8.0;
 
 interface AutoRefactorCoinageI {
   function factor() external view returns (uint256);
-  function setFactor(uint256 factor) external returns (bool);
+  function setFactor(uint256 factor_) external returns (bool);
   function burn(uint256 amount) external;
   function burnFrom(address account, uint256 amount) external;
   function mint(address account, uint256 amount) external returns (bool);

@@ -19,7 +19,6 @@ const getLayer2List = async (layer2RegistryAddress) => {
 }
 
 const getStakersList = async (depositManagerAddress, blockNumber) => {
-    //https://daoapi.tokamak.network/v1/users?chainId=1&pagsize=10000
     const stakers = [];
     const abi = [ "event Deposited(address indexed layer2, address depositor, uint256 amount)" ];
     const iface = new ethers.utils.Interface(abi);
@@ -55,8 +54,72 @@ const getStakersList = async (depositManagerAddress, blockNumber) => {
     const stakersUnique = stakers.filter((v, idx, self) => self.indexOf(v) === idx);
     console.log("length: ", stakersUnique.length);
     await fs.writeFileSync("./data/stakers.json", JSON.stringify(stakersUnique));
-    return stakers;
+    return stakersUnique;
 }
+
+
+const getUpdateStakersList = async (depositManagerAddress, fromBlockNumber, toBlockNumber) => {
+  const stakers = [];
+  const abiDeposited = [ "event Deposited(address indexed layer2, address depositor, uint256 amount)" ];
+  const abiWithdrawalRequested = [ "event WithdrawalRequested(address indexed layer2, address depositor, uint256 amount)" ];
+  const abiWithdrawalProcessed = [ "event WithdrawalProcessed(address indexed layer2, address depositor, uint256 amount)" ];
+
+  const topic0Deposited = "Deposited(address,address,uint256)";
+  const topic0WithdrawalRequested = "WithdrawalRequested(address,address,uint256)";
+  const topic0WithdrawalProcessed = "WithdrawalProcessed(address,address,uint256)";
+
+  let stakersDeposited = await getLogs(depositManagerAddress, fromBlockNumber, toBlockNumber, abiDeposited, topic0Deposited );
+  let stakersWithdrawalRequested = await getLogs(depositManagerAddress, fromBlockNumber, toBlockNumber, abiWithdrawalRequested, topic0WithdrawalRequested );
+  let stakersWithdrawalProcessed = await getLogs(depositManagerAddress, fromBlockNumber, toBlockNumber, abiWithdrawalProcessed, topic0WithdrawalProcessed );
+
+  stakersDeposited.concat(stakersWithdrawalRequested).concat(stakersWithdrawalProcessed);
+
+  let stakersUnique = stakersDeposited.filter((v, idx, self) => self.indexOf(v) === idx);
+
+  console.log("stakers-update length: ", stakersUnique.length);
+  await fs.writeFileSync("./data/stakers-update.json", JSON.stringify(stakersUnique));
+  return stakersUnique;
+}
+
+const getLogs = async (depositManagerAddress, fromBlockNumber, toBlockNumber, abiEvent, topic0 ) => {
+  const stakers = [];
+  const iface = new ethers.utils.Interface(abiEvent);
+
+  const filter = {
+    address: depositManagerAddress,
+    fromBlock: parseInt(fromBlockNumber),
+    toBlock: parseInt(toBlockNumber),
+    topics: [
+      ethers.utils.id(topic0)
+    ]
+  };
+
+  try{
+    const txs = await ethers.provider.getLogs(filter);
+    console.log("length: ", txs.length);
+
+    for (const tx of txs) {
+      const { transactionHash } = tx;
+      const { logs } = await ethers.provider.getTransactionReceipt(transactionHash);
+      const foundLog = logs.find(el => el && el.topics &&
+          el.topics.includes(ethers.utils.id(topic0))
+        );
+      if (!foundLog) continue;
+      const parsedlog = iface.parseLog(foundLog);
+      let { depositor } = parsedlog["args"];
+      depositor = depositor.toLowerCase();
+      stakers.push(depositor);
+    }
+    //console.log({ stakers });
+    console.log("length: ", topic0, stakers.length);
+
+  } catch(error){
+    console.log('getLogs error',topic0, error);
+  }
+
+  return stakers;
+}
+
 
 const getTONStakedAmount = async (seigManagerAddress) => {
     const seigManagerABI = require("../../abi/seigManager.json").abi;
@@ -87,6 +150,38 @@ const getTONStakedAmount = async (seigManagerAddress) => {
 
     await fs.writeFileSync("./data/stakesOfAllUsers.json", JSON.stringify(output));
 }
+
+
+const getUpdateTONStakedAmount = async (seigManagerAddress) => {
+  const seigManagerABI = require("../../abi/seigManager.json").abi;
+  const seigManager = new ethers.Contract(
+      seigManagerAddress,
+      seigManagerABI,
+      ethers.provider
+  );
+
+  const layer2s = JSON.parse(await fs.readFileSync("./data/layer2s.json"));
+  const stakers = JSON.parse(await fs.readFileSync("./data/stakers-update.json"));
+  const output = JSON.parse(await fs.readFileSync("./data/stakesOfAllUsers-update.json"));
+
+  for (const layer2 of layer2s) {
+      for (const staker of stakers) {
+          if (!output[layer2])
+              output[layer2] = {};
+          // if (output[layer2][staker]) {
+          //     continue;
+          // }
+
+          const staked = (await seigManager.stakeOf(layer2, staker)).toString();
+          output[layer2][staker] = staked;
+          console.log({ staker, staked });
+          await fs.writeFileSync("./data/stakesOfAllUsers-update.json", JSON.stringify(output));
+      }
+  }
+
+  await fs.writeFileSync("./data/stakesOfAllUsers-update.json", JSON.stringify(output));
+}
+
 
 const erc20RecorderMint = async (erc20RecorderAddress) => {
     const [admin] = await ethers.getSigners();
@@ -127,4 +222,4 @@ const erc20RecorderMint = async (erc20RecorderAddress) => {
       await (await erc20Recorder.connect(admin).mintBatch(accounts, amounts)).wait();
     }
 }
-module.exports = { getStakersList, getLayer2List, getTONStakedAmount, erc20RecorderMint }
+module.exports = { getStakersList, getUpdateTONStakedAmount, getLayer2List, getTONStakedAmount, erc20RecorderMint }

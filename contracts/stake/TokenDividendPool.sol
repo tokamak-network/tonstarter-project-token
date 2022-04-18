@@ -21,7 +21,7 @@ contract TokenDividendPool is
     ITokenDividendPool
 {
     event Claim(address indexed token, uint256 amount, uint256 snapshotId);
-    event Distribute(address indexed token, uint256 amount);
+    event Distribute(address indexed token, uint256 amount, uint256 snapshotId);
 
     /// @dev Check if a function is used or not
     modifier ifFree {
@@ -51,7 +51,7 @@ contract TokenDividendPool is
     function claimUpTo(address _token, uint256 _endSnapshotId) public override {
         require(claimableUpTo(_token, msg.sender, _endSnapshotId) > 0, "Amount to be claimed is zero");
 
-        (bool found, uint256 snapshotIndex) = _getSnapshotIndexForId(_token, _endSnapshotId); 
+        (bool found, uint256 snapshotIndex) = _getSnapshotIndexForId(_token, _endSnapshotId);
         require(found, "No such snapshot ID is found");
         uint256 endSnapshotIndex = snapshotIndex + 1;
         _claimUpTo(_token, msg.sender, endSnapshotIndex);
@@ -84,7 +84,7 @@ contract TokenDividendPool is
         distr.snapshots.push(
             LibTokenDividendPool.SnapshotInfo(snapshotId, increment, block.timestamp)
         );
-        emit Distribute(_token, _amount);
+        emit Distribute(_token, _amount, snapshotId);
     }
 
     /// @inheritdoc ITokenDividendPool
@@ -129,7 +129,7 @@ contract TokenDividendPool is
         address _account,
         uint256 _endSnapshotId
     ) public view override returns (uint256) {
-        (bool found, uint256 snapshotIndex) = _getSnapshotIndexForId(_token, _endSnapshotId); 
+        (bool found, uint256 snapshotIndex) = _getSnapshotIndexForId(_token, _endSnapshotId);
         require(found, "No such snapshot ID is found");
         uint256 endSnapshotIndex = snapshotIndex + 1;
 
@@ -156,7 +156,7 @@ contract TokenDividendPool is
         if (snapshots.length == 0) {
             return (false, 0);
         }
-        
+
         index = snapshots.length - 1;
         while (true) {
             if (snapshots[index].id == _snapshotId) {
@@ -205,7 +205,7 @@ contract TokenDividendPool is
         ) {
             uint256 snapshotId = distr.snapshots[snapshotIndex].id;
             uint256 totalDividendAmount = distr.snapshots[snapshotIndex].totalDividendAmount;
-            accumulated +=  _calculateClaimPerSnapshot( 
+            accumulated +=  _calculateClaimPerSnapshot(
                                 _account,
                                 snapshotId,
                                 totalDividendAmount

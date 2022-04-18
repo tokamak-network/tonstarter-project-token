@@ -25,6 +25,21 @@ task("get-ton-staked-amount", "Retrieve and save accounts and their staked amoun
       await getTONStakedAmount(seigManagerAddress);
     })
 
+
+task("get-update-stakers-list", "Retrieve and save layer2 list into a file")
+  .addParam("depositManagerAddress", "Seig Manager Address")
+  .addParam("fromBlockNumber", "Block Number")
+  .addParam("toBlockNumber", "Block Number")
+  .setAction(async ({ depositManagerAddress, fromBlockNumber, toBlockNumber }) => {
+    await getUpdateStakersList(depositManagerAddress, fromBlockNumber, toBlockNumber);
+  })
+
+task("get-update-ton-staked-amount", "Retrieve and save layer2 list into a file")
+  .addParam("seigManagerAddress", "Seig Manager Address")
+  .setAction(async ({ seigManagerAddress }) => {
+    await getUpdateTONStakedAmount(seigManagerAddress);
+  })
+
 task("erc20-recorder-mint","")
     .addParam("erc20RecorderAddress", "ERC20 Recorder Address")
     .setAction(async ({ erc20RecorderAddress }) => {
