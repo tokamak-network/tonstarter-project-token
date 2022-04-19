@@ -6,6 +6,9 @@ require("hardhat-gas-reporter");
 require("dotenv/config");
 
 require("dotenv").config();
+require("./tasks/token-dividend-pool-deploy");
+require("./tasks/ton-stakers-info");
+require("./tasks/dao-agendas");
 
 module.exports = {
   defaultNetwork: "hardhat",
@@ -29,6 +32,9 @@ module.exports = {
       gasPrice: 95000000000,
     },
   },
+  localhost: {
+    timeout: 100000000,
+  },
   etherscan: {
     apiKey: process.env.ETHERSCAN_API_KEY,
   },
@@ -48,6 +54,6 @@ module.exports = {
     artifacts: "./artifacts",
   },
   mocha: {
-    timeout: 10000000,
+    timeout: 100000000,
   },
 };
