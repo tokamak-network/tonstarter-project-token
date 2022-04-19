@@ -15,8 +15,8 @@ async function main() {
   console.log("tx:", tx.deployTransaction.hash);
   console.log("projectTokenProxy deployed to:", projectTokenProxy.address);
 
-  // 0x86B5E01a718398fB89aBaafF4A67AdeE3EA28C42
-  await (await projectTokenProxy.connect(admin).upgradeTo("0x86B5E01a718398fB89aBaafF4A67AdeE3EA28C42")).wait();
+
+  await (await projectTokenProxy.connect(admin).upgradeTo("0x63e559c405BffC9507e109654c28BC283Cd6055C")).wait();
 
 
   //projectTokenProxy deployed to: 0x0525e7040c71fb6692324AA270788DEa41Eb0129

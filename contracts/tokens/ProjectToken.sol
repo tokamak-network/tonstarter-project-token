@@ -40,6 +40,22 @@ contract ProjectToken is ProjectTokenStorage, IERC721, IERC721Metadata, IERC721E
     }
 
     /**
+     * @dev Returns the address of the current owner.
+     */
+    function owner() public view virtual returns (address) {
+        return _owner;
+    }
+
+    /**
+     * @dev Returns the address of the current owner.
+     */
+    function isOwner(address addr) public view virtual returns (bool) {
+
+        if(_owner == addr) return true;
+        else return false;
+    }
+
+    /**
      * @dev See {IERC721-balanceOf}.
      */
     /*function balanceOf(address owner) public view virtual override returns (uint256) {
@@ -133,6 +149,7 @@ contract ProjectToken is ProjectTokenStorage, IERC721, IERC721Metadata, IERC721E
         return string(buffer);
     }
 
+    /*
     function tokenURI(uint256 tokenId) public view virtual override returns (string memory) {
         require(_exists(tokenId), "ProjectToken: URI query for nonexistent token");
 
@@ -140,14 +157,52 @@ contract ProjectToken is ProjectTokenStorage, IERC721, IERC721Metadata, IERC721E
         //string memory base = baseURI();
         string[17] memory parts;
         parts[0] = '<svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMinYMin meet" viewBox="0 0 350 350"><style>.base { fill: white; font-family: serif; font-size: 14px; }</style><rect width="100%" height="100%" fill="black" />';
-        parts[1] = '<text class="base">';
+        parts[1] = '<text x="10" y="60" class="base">';
         parts[2] = _tokenURIs[tokenId];
         parts[3] = '</text></svg>';
 
         string memory output = string(abi.encodePacked(parts[0], parts[1], parts[2], parts[3]));
 
         string memory json = Base64.encode(bytes(string(abi.encodePacked('{"name": "Project #', toString(tokenId), '",  "image": "data:image/svg+xml;base64,', Base64.encode(bytes(output)), '"}'))));
+
         output = string(abi.encodePacked('data:application/json;base64,', json));
+
+        return output;
+    }
+    */
+
+    function svgToBase64(string memory _source) public pure returns (string memory) {
+       return Base64.encode(bytes(string(abi.encodePacked(_source))));
+    }
+
+    function svgToImageURI(string memory _source) public pure returns (string memory) {
+        string memory baseURL = "data:image/svg+xml;base64,";
+        string memory svgBase64Encoded = Base64.encode(bytes(string(abi.encodePacked(_source))));
+        return string(abi.encodePacked(baseURL, svgBase64Encoded));
+    }
+    /*
+    function formatTokenURI(string memory _imageURI, string memory _name, string memory _description, string memory _properties) public pure returns (string memory) {
+        return string(
+            abi.encodePacked(
+                "data:application/json;base64,",
+                Base64.encode(
+                    bytes(
+                        abi.encodePacked(
+                            '{"name":"', _name,
+                            '", "description": "', _description, '"',
+                            ', "attributes": ', _properties,
+                            ', "image":"', _imageURI, '"}'
+                        )
+                    )
+                )
+            )
+        );
+    }
+    */
+    function tokenURI(uint256 tokenId) public view virtual override returns (string memory) {
+        require(_exists(tokenId), "ProjectToken: URI query for nonexistent token");
+        string memory json = Base64.encode(bytes(string(abi.encodePacked(_tokenURIs[tokenId]))));
+        string memory output = string(abi.encodePacked('data:application/json;base64,', json));
 
         return output;
     }
@@ -157,7 +212,6 @@ contract ProjectToken is ProjectTokenStorage, IERC721, IERC721Metadata, IERC721E
 
         return _tokenURIs[tokenId];
     }
-
     /*
     function tokenURI(uint256 tokenId) override public view returns (string memory) {
         string[17] memory parts;
@@ -383,7 +437,7 @@ contract ProjectToken is ProjectTokenStorage, IERC721, IERC721Metadata, IERC721E
      */
     function _burn(address owner_, uint256 tokenId) internal virtual{
         require(ownerOf(tokenId) == owner_, "ProjectToken: burn of token that is not own");
-
+        _beforeTokenTransfer(owner_, address(0), tokenId);
         _clearApproval(tokenId);
 
         _ownedTokensCount[owner_].decrement();
@@ -452,6 +506,7 @@ contract ProjectToken is ProjectTokenStorage, IERC721, IERC721Metadata, IERC721E
         require(to != address(0), "ProjectToken: mint to the zero address");
         require(!_exists(tokenId), "ProjectToken: token already minted");
 
+        _beforeTokenTransfer(address(0), to, tokenId);
 
         _tokenOwner[tokenId] = to;
         _ownedTokensCount[to].increment();
@@ -562,6 +617,8 @@ contract ProjectToken is ProjectTokenStorage, IERC721, IERC721Metadata, IERC721E
         require(ownerOf(tokenId) == from, "ProjectToken: transfer of token that is not own");
         require(to != address(0), "ProjectToken: transfer to the zero address");
 
+        _beforeTokenTransfer(from, to, tokenId);
+
         _clearApproval(tokenId);
 
         _ownedTokensCount[from].decrement();
@@ -636,4 +693,34 @@ contract ProjectToken is ProjectTokenStorage, IERC721, IERC721Metadata, IERC721E
         _tokenApprovals[tokenId] = to;
         emit Approval(ownerOf(tokenId), to, tokenId); // internal owner
     }
+
+    /**
+     * @dev Hook that is called before any token transfer. This includes minting
+     * and burning.
+     *
+     * Calling conditions:
+     *
+     * - When `from` and `to` are both non-zero, ``from``'s `tokenId` will be
+     * transferred to `to`.
+     * - When `from` is zero, `tokenId` will be minted for `to`.
+     * - When `to` is zero, ``from``'s `tokenId` will be burned.
+     * - `from` cannot be the zero address.
+     * - `to` cannot be the zero address.
+     *
+     * To learn more about hooks, head to xref:ROOT:extending-contracts.adoc#using-hooks[Using Hooks].
+     */
+    function _beforeTokenTransfer(address from, address to, uint256 tokenId) internal virtual {
+
+     }
+
+
+    /**
+     * @dev Overrides supportsInterface
+     */
+    function supportsInterface(bytes4 interfaceId) public view virtual override(IERC165, ERC165P) returns (bool) {
+        return _supportedInterfaces[interfaceId];
+    }
+
+
+
 }

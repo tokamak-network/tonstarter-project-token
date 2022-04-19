@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
+import "./ERC165P.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 pragma abicoder v2;
 
@@ -9,7 +9,7 @@ pragma abicoder v2;
  * @title ERC721 Non-Fungible Token Standard basic implementation
  * @dev see https://eips.ethereum.org/EIPS/eip-721
  */
-contract ProjectTokenStorage is ERC165 {
+contract ProjectTokenStorage is ERC165P {
     using Counters for Counters.Counter;
 
     // Equals to `bytes4(keccak256("onERC721Received(address,address,uint256,bytes)"))`
@@ -90,16 +90,15 @@ contract ProjectTokenStorage is ERC165 {
 
     bool public pauseProxy;
 
-    mapping(bytes4 => bool) public _supportedInterfaces;
+    // mapping(bytes4 => bool) public _supportedInterfaces;
 
     modifier onlyOwner() {
         require(_owner == msg.sender, "caller is not the owner");
         _;
     }
 
-
-    function _registerInterface(bytes4 interfaceId) internal virtual {
-        require(interfaceId != 0xffffffff, "ERC165: invalid interface id");
-        _supportedInterfaces[interfaceId] = true;
-    }
+    // function _registerInterface(bytes4 interfaceId) internal virtual {
+    //     require(interfaceId != 0xffffffff, "ERC165: invalid interface id");
+    //     _supportedInterfaces[interfaceId] = true;
+    // }
 }
