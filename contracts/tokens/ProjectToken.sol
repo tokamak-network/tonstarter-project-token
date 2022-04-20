@@ -180,25 +180,7 @@ contract ProjectToken is ProjectTokenStorage, IERC721, IERC721Metadata, IERC721E
         string memory svgBase64Encoded = Base64.encode(bytes(string(abi.encodePacked(_source))));
         return string(abi.encodePacked(baseURL, svgBase64Encoded));
     }
-    /*
-    function formatTokenURI(string memory _imageURI, string memory _name, string memory _description, string memory _properties) public pure returns (string memory) {
-        return string(
-            abi.encodePacked(
-                "data:application/json;base64,",
-                Base64.encode(
-                    bytes(
-                        abi.encodePacked(
-                            '{"name":"', _name,
-                            '", "description": "', _description, '"',
-                            ', "attributes": ', _properties,
-                            ', "image":"', _imageURI, '"}'
-                        )
-                    )
-                )
-            )
-        );
-    }
-    */
+
     function tokenURI(uint256 tokenId) public view virtual override returns (string memory) {
         require(_exists(tokenId), "ProjectToken: URI query for nonexistent token");
         string memory json = Base64.encode(bytes(string(abi.encodePacked(_tokenURIs[tokenId]))));
@@ -264,21 +246,14 @@ contract ProjectToken is ProjectTokenStorage, IERC721, IERC721Metadata, IERC721E
     /**
      * @dev See {IERC721Enumerable-tokenOfOwnerByIndex}.
      */
-    /*function tokenOfOwnerByIndex(address owner, uint256 index) public view virtual override returns (uint256) {
-        return holderTokens(owner).at(index);
-    }
-    */
     function tokenOfOwnerByIndex(address owner_, uint256 index) public view override returns (uint256) {
         require(index < balanceOf(owner_), "ProjectToken: owner index out of bounds");
         return _ownedTokens[owner_][index];
     }
+
     /**
      * @dev See {IERC721Enumerable-totalSupply}.
      */
-    /*function totalSupply() public view virtual override returns (uint256) {
-        // _tokenOwners are indexed by tokenIds, so .length() returns the number of tokenIds
-        return tokenOwners().length();
-    }*/
     function totalSupply() public view override returns (uint256) {
         return _allTokens.length;
     }
@@ -303,10 +278,10 @@ contract ProjectToken is ProjectTokenStorage, IERC721, IERC721Metadata, IERC721E
      * @dev See {IERC721-approve}.
      */
     function approve(address to, uint256 tokenId) public virtual override {
-        address owner = ownerOf(tokenId);
-        require(to != owner, "ProjectToken: approval to current owner");
+        address owner_ = ownerOf(tokenId);
+        require(to != owner_, "ProjectToken: approval to current owner");
 
-        require(msg.sender == owner || isApprovedForAll(owner, msg.sender),
+        require(msg.sender == owner_ || isApprovedForAll(owner_, msg.sender),
             "ProjectToken: approve caller is not owner nor approved for all"
         );
 
@@ -335,8 +310,8 @@ contract ProjectToken is ProjectTokenStorage, IERC721, IERC721Metadata, IERC721E
     /**
      * @dev See {IERC721-isApprovedForAll}.
      */
-    function isApprovedForAll(address owner, address operator) public view virtual override returns (bool) {
-        return _operatorApprovals[owner][operator];
+    function isApprovedForAll(address owner_, address operator) public view virtual override returns (bool) {
+        return _operatorApprovals[owner_][operator];
     }
 
     /**
@@ -399,8 +374,8 @@ contract ProjectToken is ProjectTokenStorage, IERC721, IERC721Metadata, IERC721E
         return tokenOwners().contains(tokenId);
     }*/
     function _exists(uint256 tokenId) internal view returns (bool) {
-        address owner = _tokenOwner[tokenId];
-        return owner != address(0);
+        address owner_ = _tokenOwner[tokenId];
+        return owner_ != address(0);
     }
     /**
      * @dev Returns whether `spender` is allowed to manage `tokenId`.
@@ -411,8 +386,8 @@ contract ProjectToken is ProjectTokenStorage, IERC721, IERC721Metadata, IERC721E
      */
     function _isApprovedOrOwner(address spender, uint256 tokenId) internal view virtual returns (bool) {
         require(_exists(tokenId), "ProjectToken: operator query for nonexistent token");
-        address owner = ownerOf(tokenId);
-        return (spender == owner || getApproved(tokenId) == spender || isApprovedForAll(owner, spender));
+        address owner_ = ownerOf(tokenId);
+        return (spender == owner_ || getApproved(tokenId) == spender || isApprovedForAll(owner_, spender));
     }
 
 
