@@ -213,10 +213,12 @@ task("get-stake-tot-of-seig-manager", "")
             ethers.provider
         );
         const totalSupply = await autoRefactorCoinage.totalSupply();
-        console.log("totalSupply of tot :", totalSupply);
+        console.log("totalSupply of tot (ray):", totalSupply);
+        let totalSupplyWei = ethers.utils.formatUnits(totalSupply, 9);
+        let end = Math.min(totalSupplyWei.indexOf('.'), totalSupplyWei.length) ;
+        console.log("totalSupply of tot (wei):", totalSupplyWei.substring(0,end));
+
     });
-
-
 
 task("get-onwer-of-seig-manager", "")
     .addParam("seigManagerAddress", "")

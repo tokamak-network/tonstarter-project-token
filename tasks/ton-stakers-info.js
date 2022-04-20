@@ -1,9 +1,12 @@
 const fs = require('fs');
 const {
+  getUpdateTONStakedAmount,
+  getUpdateStakersList,
   getStakersList,
   getLayer2List,
   getTONStakedAmount,
-  erc20RecorderMint
+  erc20RecorderMint,
+  concatStakers
 } = require("../test/helpers/ton-stakers");
 
 task("get-layer2-list", "Retrieve and save layer2 list into a file")
@@ -39,6 +42,12 @@ task("get-update-ton-staked-amount", "Retrieve and save layer2 list into a file"
   .setAction(async ({ seigManagerAddress }) => {
     await getUpdateTONStakedAmount(seigManagerAddress);
   })
+
+
+task("concat-stakers","")
+.setAction(async ({}) => {
+  await concatStakers();
+});
 
 task("erc20-recorder-mint","")
     .addParam("erc20RecorderAddress", "ERC20 Recorder Address")
@@ -131,6 +140,50 @@ task("display-ton-staked-amount", "Retrieve and save accounts and their staked a
   })
 
 
+  task("display-update-ton-staked-amount", "Retrieve and save accounts and their staked amounts")
+  .addParam("seigManagerAddress", "Seig Manager Address")
+  .addParam("accountAddress", "")
+  .setAction(async ({ seigManagerAddress, accountAddress }) => {
+
+
+    const seigManagerABI = JSON.parse(await fs.readFileSync("./abi/seigManager.json")).abi;
+    const seigManager = new ethers.Contract(
+        seigManagerAddress,
+        seigManagerABI,
+        ethers.provider
+    );
+
+    const layer2s = JSON.parse(await fs.readFileSync("./data/layer2s.json"));
+    const stakers = JSON.parse(await fs.readFileSync("./data/stakers.json"));
+    const output = JSON.parse(await fs.readFileSync("./data/stakesOfAllUsers-update.json"));
+    let totalStaked = ethers.BigNumber.from(0);
+
+    for (const layer2 of layer2s) {
+        let staker = accountAddress;
+        //for (const staker of stakers) {
+            //console.log(layer2, staker, output[layer2][staker]);
+
+            if (!output[layer2])
+                output[layer2] = {};
+
+            const staked = (await seigManager.stakeOf(layer2, staker)).toString();
+            if (staked) {
+              totalStaked = totalStaked.add(ethers.BigNumber.from(staked));
+            }
+            console.log(layer2, staker, staked, totalStaked);
+       // }
+    }
+
+    console.log(totalStaked);
+
+    let totalStakedWei = ethers.utils.formatUnits(totalStaked, 9);
+    console.log(totalStakedWei);
+    let end = Math.min(totalStakedWei.indexOf('.'), totalStakedWei.length) ;
+    console.log(totalStakedWei.substring(0,end));
+
+  })
+
+
   task("review-ton-staked-amount", "Retrieve and save accounts and their staked amounts")
   .addParam("seigManagerAddress", "Seig Manager Address")
   .addParam("accountAddress", "")
@@ -147,6 +200,52 @@ task("display-ton-staked-amount", "Retrieve and save accounts and their staked a
     const layer2s = JSON.parse(await fs.readFileSync("./data/layer2s.json"));
     const stakers = JSON.parse(await fs.readFileSync("./data/stakers.json"));
     const output = JSON.parse(await fs.readFileSync("./data/stakesOfAllUsers.json"));
+
+    let totalStaked = ethers.BigNumber.from(0);
+
+    for (const layer2 of layer2s) {
+        let staker = accountAddress;
+
+        if (!output[layer2])
+            output[layer2] = {};
+        // if (output[layer2][staker]) {
+        //     continue;
+        // }
+
+        const staked = output[layer2][staker];
+        if (staked) {
+          totalStaked = totalStaked.add(ethers.BigNumber.from(staked));
+        }
+        console.log(layer2, staker, staked, totalStaked);
+
+    }
+
+    console.log(totalStaked);
+
+    let totalStakedWei = ethers.utils.formatUnits(totalStaked, 9);
+    console.log(totalStakedWei);
+    let end = Math.min(totalStakedWei.indexOf('.'), totalStakedWei.length) ;
+    console.log(totalStakedWei.substring(0,end));
+
+  })
+
+
+  task("review-update-ton-staked-amount", "Retrieve and save accounts and their staked amounts")
+  .addParam("seigManagerAddress", "Seig Manager Address")
+  .addParam("accountAddress", "")
+  .setAction(async ({ seigManagerAddress, accountAddress }) => {
+
+
+    const seigManagerABI = JSON.parse(await fs.readFileSync("./abi/seigManager.json")).abi;
+    const seigManager = new ethers.Contract(
+        seigManagerAddress,
+        seigManagerABI,
+        ethers.provider
+    );
+
+    const layer2s = JSON.parse(await fs.readFileSync("./data/layer2s.json"));
+    const stakers = JSON.parse(await fs.readFileSync("./data/stakers.json"));
+    const output = JSON.parse(await fs.readFileSync("./data/stakesOfAllUsers-update.json"));
 
     let totalStaked = ethers.BigNumber.from(0);
 

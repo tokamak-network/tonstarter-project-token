@@ -1,3 +1,5 @@
+const fs = require('fs');
+
 const {
     keccak256,
   } = require("web3-utils");
@@ -78,6 +80,7 @@ task("deploy-power-ton-swapper", "")
         const powerTONSwapperImpl = await PowerTONSwapperImplContract.connect(admin).deploy();
         await powerTONSwapperImpl.deployed();
 
+        console.log("powerTONSwapperImpl Deployed:", powerTONSwapperImpl.address);
 
         const PowerTONSwapperProxyContract = await ethers.getContractFactory("PowerTONSwapperProxy");
         const powerTONSwapperProxy = await PowerTONSwapperProxyContract.connect(admin).deploy(
@@ -85,7 +88,6 @@ task("deploy-power-ton-swapper", "")
 
         await powerTONSwapperProxy.deployed();
 
-        console.log("powerTONSwapperImpl Deployed:", powerTONSwapperImpl.address);
         console.log("powerTONSwapperProxy Deployed:", powerTONSwapperProxy.address);
 
         await run("verify", {
@@ -124,3 +126,101 @@ task("set-erc20-recorder", "")
         console.log('grantRole SNAPSHOT_ROLE ', tx2.hash);
 
     });
+
+
+task("get-sum-of-lauer2s", "")
+    .addParam("layer2RegistryAddress", "")
+    .addParam("seigManagerAddress", "")
+    .setAction(async ({  layer2RegistryAddress, seigManagerAddress }) => {
+
+        const [admin] = await ethers.getSigners()
+
+        const seigManagerABI = JSON.parse(await fs.readFileSync("./abi/seigManager.json")).abi;
+        const seigManager = new ethers.Contract(
+            seigManagerAddress,
+            seigManagerABI,
+            ethers.provider
+        );
+
+
+        const layer2RegistryABI = JSON.parse(await fs.readFileSync("./abi/layer2Registry.json")).abi;
+        const layer2Registry = new ethers.Contract(
+            layer2RegistryAddress,
+            layer2RegistryABI,
+            ethers.provider
+        );
+
+        const autoRefactorCoinageABI = JSON.parse(await fs.readFileSync("./abi/autoRefactorCoinage.json")).abi;
+
+        let num = await layer2Registry.numLayer2s();
+        let total = ethers.BigNumber.from(0);
+
+        console.log('layer2Registry num', num);
+        for (let i = 0; i < num; ++i) {
+            console.log('-----------------');
+            let layer2Address = await layer2Registry.layer2ByIndex(i);
+            console.log('layer2Address', i, layer2Address);
+            let coinageAddress = await seigManager.coinages(layer2Address);
+            console.log('coinageAddress', i, coinageAddress);
+            const coinage = new ethers.Contract(
+                coinageAddress,
+                autoRefactorCoinageABI,
+                ethers.provider
+            );
+            let coinageTotalSupply = await coinage.totalSupply();
+            console.log('coinageTotalSupply', i, coinageTotalSupply);
+
+            total = total.add(coinageTotalSupply);
+        }
+        console.log('-----------------');
+        console.log('sum of coinageTotalSupply (ray) ', total);
+
+        let totalStakedWei = ethers.utils.formatUnits(total, 9);
+        let end = Math.min(totalStakedWei.indexOf('.'), totalStakedWei.length) ;
+        console.log('sum of coinageTotalSupply (wei) ', totalStakedWei.substring(0,end));
+
+    });
+
+
+task("compare-layer2-staked-amount", "")
+.addParam("layer2RegistryAddress", "")
+.addParam("seigManagerAddress", "")
+.setAction(async ({  layer2RegistryAddress, seigManagerAddress }) => {
+
+    const [admin] = await ethers.getSigners()
+
+    const layer2s = JSON.parse(await fs.readFileSync("./data/layer2s.json"));
+    const stakers = JSON.parse(await fs.readFileSync("./data/stakers-finish.json"));
+    const stakesOfAllUsers = JSON.parse(await fs.readFileSync("./data/stakesOfAllUsers-update.json"));
+    const autoRefactorCoinageABI = JSON.parse(await fs.readFileSync("./abi/autoRefactorCoinage.json")).abi;
+    const seigManagerABI = JSON.parse(await fs.readFileSync("./abi/seigManager.json")).abi;
+    const seigManager = new ethers.Contract(
+        seigManagerAddress,
+        seigManagerABI,
+        ethers.provider
+    );
+
+    for (const layer2 of layer2s) {
+        console.log('-----------------------------', layer2);
+        let totalStaked = ethers.BigNumber.from(0);
+        for (const staker of stakers) {
+            if (!stakesOfAllUsers[layer2][staker]) {
+                continue;
+            }
+            if (stakesOfAllUsers[layer2][staker]) {
+                totalStaked = totalStaked.add(ethers.BigNumber.from(stakesOfAllUsers[layer2][staker]));
+            }
+        }
+
+        let coinageAddress = await seigManager.coinages(layer2);
+        const coinage = new ethers.Contract(
+            coinageAddress,
+            autoRefactorCoinageABI,
+            ethers.provider
+        );
+        let coinageTotalSupply = await coinage.totalSupply();
+        console.log(layer2, coinageAddress, totalStaked.toString() );
+        console.log(layer2, coinageAddress, coinageTotalSupply.toString() );
+    }
+
+});

@@ -72,7 +72,13 @@ const getUpdateStakersList = async (depositManagerAddress, fromBlockNumber, toBl
   let stakersWithdrawalRequested = await getLogs(depositManagerAddress, fromBlockNumber, toBlockNumber, abiWithdrawalRequested, topic0WithdrawalRequested );
   let stakersWithdrawalProcessed = await getLogs(depositManagerAddress, fromBlockNumber, toBlockNumber, abiWithdrawalProcessed, topic0WithdrawalProcessed );
 
-  stakersDeposited.concat(stakersWithdrawalRequested).concat(stakersWithdrawalProcessed);
+  // console.log("stakersDeposited: ", stakersDeposited);
+  // console.log("stakersWithdrawalRequested: ", stakersWithdrawalRequested);
+  // console.log("stakersWithdrawalProcessed: ", stakersWithdrawalProcessed);
+
+
+  stakersDeposited = stakersDeposited.concat(stakersWithdrawalRequested).concat(stakersWithdrawalProcessed);
+
 
   let stakersUnique = stakersDeposited.filter((v, idx, self) => self.indexOf(v) === idx);
 
@@ -96,7 +102,7 @@ const getLogs = async (depositManagerAddress, fromBlockNumber, toBlockNumber, ab
 
   try{
     const txs = await ethers.provider.getLogs(filter);
-    console.log("length: ", txs.length);
+    //console.log("length: ", txs.length);
 
     for (const tx of txs) {
       const { transactionHash } = tx;
@@ -111,7 +117,7 @@ const getLogs = async (depositManagerAddress, fromBlockNumber, toBlockNumber, ab
       stakers.push(depositor);
     }
     //console.log({ stakers });
-    console.log("length: ", topic0, stakers.length);
+    console.log("stakers length: ", topic0, stakers.length);
 
   } catch(error){
     console.log('getLogs error',topic0, error);
@@ -183,13 +189,28 @@ const getUpdateTONStakedAmount = async (seigManagerAddress) => {
 }
 
 
+
+const concatStakers = async () => {
+
+  const stakers = JSON.parse(await fs.readFileSync("./data/stakers.json"));
+  const stakersUpdate = JSON.parse(await fs.readFileSync("./data/stakers-update.json"));
+  console.log("stakers length: ", stakers.length);
+  console.log("stakersUpdate length: ", stakersUpdate.length);
+
+  let accounts = stakers.concat(stakersUpdate);
+  const stakersFinish = accounts.filter((v, idx, self) => self.indexOf(v) === idx);
+  console.log("stakersFinish length: ", stakersFinish.length);
+  await fs.writeFileSync("./data/stakers-finish.json", JSON.stringify(stakersFinish));
+  return stakersFinish;
+}
+
 const erc20RecorderMint = async (erc20RecorderAddress) => {
     const [admin] = await ethers.getSigners();
     const erc20Recorder = await ethers.getContractAt("ERC20Recorder", erc20RecorderAddress);
 
     const layer2s = JSON.parse(await fs.readFileSync("./data/layer2s.json"));
-    const stakers = JSON.parse(await fs.readFileSync("./data/stakers.json"));
-    const stakesOfAllUsers = JSON.parse(await fs.readFileSync("./data/stakesOfAllUsers.json"));
+    const stakers = JSON.parse(await fs.readFileSync("./data/stakers-finish.json"));
+    const stakesOfAllUsers = JSON.parse(await fs.readFileSync("./data/stakesOfAllUsers-update.json"));
 
     let accounts = [];
     let amounts = [];
@@ -222,4 +243,14 @@ const erc20RecorderMint = async (erc20RecorderAddress) => {
       await (await erc20Recorder.connect(admin).mintBatch(accounts, amounts)).wait();
     }
 }
-module.exports = { getStakersList, getUpdateTONStakedAmount, getLayer2List, getTONStakedAmount, erc20RecorderMint }
+
+
+module.exports = {
+    getUpdateStakersList,
+    getStakersList,
+    getUpdateTONStakedAmount,
+    getLayer2List,
+    getTONStakedAmount,
+    erc20RecorderMint,
+    concatStakers
+  }
