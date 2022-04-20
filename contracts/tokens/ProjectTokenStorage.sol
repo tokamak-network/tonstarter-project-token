@@ -90,15 +90,9 @@ contract ProjectTokenStorage is ERC165P {
 
     bool public pauseProxy;
 
-    // mapping(bytes4 => bool) public _supportedInterfaces;
-
     modifier onlyOwner() {
         require(_owner == msg.sender, "caller is not the owner");
         _;
     }
 
-    // function _registerInterface(bytes4 interfaceId) internal virtual {
-    //     require(interfaceId != 0xffffffff, "ERC165: invalid interface id");
-    //     _supportedInterfaces[interfaceId] = true;
-    // }
 }
