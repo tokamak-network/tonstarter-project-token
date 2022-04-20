@@ -31,6 +31,8 @@ contract PowerTONSwapper is
         _;
     }
 
+    event OnChangeAmountInRecoder(address indexed account, uint256 amountToMint, uint256 amountToBurn);
+
     constructor()
     {
     }
@@ -129,7 +131,7 @@ contract PowerTONSwapper is
         (uint256 amountToMint, uint256 amountToBurn) = isChangeAmountInRecoder(account);
 
         onChangeAmountInRecoder(account, amountToMint, amountToBurn);
-        emit OnDeposit(layer2, account, amount, amountToMint);
+        emit OnDeposit(layer2, account, amount);
     }
 
     function onWithdraw(address layer2, address account, uint256 amount)
@@ -138,7 +140,7 @@ contract PowerTONSwapper is
         (uint256 amountToMint, uint256 amountToBurn) = isChangeAmountInRecoder(account);
 
         onChangeAmountInRecoder(account, amountToMint, amountToBurn);
-        emit OnWithdraw(layer2, account, amount, amountToBurn);
+        emit OnWithdraw(layer2, account, amount);
     }
 
     function onChangeAmountInRecoder(address account, uint256 amountToMint, uint256 amountToBurn)
@@ -150,9 +152,72 @@ contract PowerTONSwapper is
         }else if(amountToBurn > 0){
              IIERC20(erc20Recorder).burnFrom(account, amountToBurn);
         }
+        emit OnChangeAmountInRecoder(account, amountToMint, amountToBurn);
     }
 
-    // 사용자가 토카막에 스테이킹한 금액
+    // 사용자가 토카막에서 스테이킹양이 증가될때, 레코더에서 증가시킬양
+    function isChangeAmountInRecoder(address account)
+        public view
+        returns (uint256 amountToMint, uint256 amountToBurn)
+    {
+        // 추가된 금액에 상관없이, 현재 토카막에 스테이킹된 비율과 레코더의 비율을 같게하자.
+        (, uint256 totalLayer2Wei) = totalLayer2sInTokamak();
+        (, uint256 userTotalBalanceWei) = userTONStakedAmountInTokamak(account);
+
+        uint256 recoderTotalSupply = IIERC20(erc20Recorder).totalSupply();
+        uint256 recoderUserBalance = IIERC20(erc20Recorder).balanceOf(account);
+
+        amountToMint = 0;
+        amountToBurn = 0;
+
+        uint256 cal1 = userTotalBalanceWei * recoderTotalSupply;
+        uint256 cal2 = recoderUserBalance * totalLayer2Wei;
+
+        if(totalLayer2Wei > userTotalBalanceWei && (cal1 > cal2))
+            amountToMint = (cal1 - cal2) / (totalLayer2Wei - userTotalBalanceWei);
+        else if(totalLayer2Wei > userTotalBalanceWei && (cal2 > cal1))
+            amountToBurn = (cal2 - cal1) / (totalLayer2Wei - userTotalBalanceWei);
+    }
+
+
+    function tonStakedRatio(address user)
+        public view
+        returns (
+            uint256 userStakedInTokamak,
+            uint256 totalLayer2StakedInTokamak,
+            uint256 userRecoder,
+            uint256 totalRecoder
+            )
+    {
+        (, totalLayer2StakedInTokamak) = totalLayer2sInTokamak();
+        (, userStakedInTokamak) = userTONStakedAmountInTokamak(user);
+
+        totalRecoder = IIERC20(erc20Recorder).totalSupply();
+        userRecoder = IIERC20(erc20Recorder).balanceOf(user);
+    }
+
+    function totalLayer2sInTokamak()
+        public view
+        returns (uint256 totalSupplyRay, uint256 totalSupplyWei)
+    {
+        // address totAddress = SeigManagerI(seigManager).tot();
+        // totTotalSupplyRay = AutoRefactorCoinageI(totAddress).totalSupply();
+        // totTotalSupplyWei = totTotalSupplyRay / 1e9;
+
+        uint256 num = Layer2RegistryI(layer2Registry).numLayer2s();
+        totalSupplyRay = 0;
+        for (uint256 i = 0; i < num; ++i) {
+            address layer2Address = Layer2RegistryI(layer2Registry).layer2ByIndex(i);
+            address coinageAddress = SeigManagerI(seigManager).coinages(layer2Address);
+            uint256 total = AutoRefactorCoinageI(coinageAddress).totalSupply();
+            totalSupplyRay += total;
+        }
+
+        totalSupplyWei = 0;
+        if(totalSupplyRay > 0) totalSupplyWei = totalSupplyRay / 1e9;
+    }
+
+
     function userTONStakedAmountInTokamak(address account)
         public view
         returns (uint256 userTotalBalanceRay, uint256 userTotalBalanceWei)
@@ -171,31 +236,6 @@ contract PowerTONSwapper is
         if(userTotalBalanceRay > 0) userTotalBalanceWei = userTotalBalanceRay / 1e9;
     }
 
-    // 사용자가 토카막에서 스테이킹양이 증가될때, 레코더에서 증가시킬양
-    function isChangeAmountInRecoder(address account)
-        public
-        returns (uint256 amountToMint, uint256 amountToBurn)
-    {
-        // 추가된 금액에 상관없이, 현재 토카막에 스테이킹된 비율과 레코더의 비율을 같게하자.
-        address totAddress = SeigManagerI(seigManager).tot();
-        uint256 totTotalSupplyRay = AutoRefactorCoinageI(totAddress).totalSupply();
-        uint256 totTotalSupplyWei = totTotalSupplyRay / 1e9;
-        (, uint256 userTotalBalanceWei) = userTONStakedAmountInTokamak(account);
 
-        uint256 recoderTotalSupply = IIERC20(erc20Recorder).totalSupply();
-        uint256 recoderUserBalance = IIERC20(erc20Recorder).balanceOf(account);
-
-        amountToMint = 0;
-        amountToBurn = 0;
-
-        uint256 cal1 = userTotalBalanceWei * recoderTotalSupply;
-        uint256 cal2 = recoderUserBalance * totTotalSupplyWei;
-
-        if(totTotalSupplyWei > userTotalBalanceWei && (cal1 > cal2))
-            amountToMint = (cal1 - cal2) / (totTotalSupplyWei - userTotalBalanceWei);
-        else if(totTotalSupplyWei > userTotalBalanceWei && (cal2 > cal1))
-            amountToBurn = (cal2 - cal1) / (totTotalSupplyWei - userTotalBalanceWei);
-
-    }
 
 }

@@ -2,6 +2,13 @@
 pragma solidity >0.8.0;
 
 interface AutoRefactorCoinageI {
+
+  struct Balance {
+    uint256 balance;
+    uint256 refactoredCount;
+    uint256 remain;
+  }
+
   function factor() external view returns (uint256);
   function setFactor(uint256 factor_) external returns (bool);
   function burn(uint256 amount) external;
@@ -12,4 +19,9 @@ interface AutoRefactorCoinageI {
   function addMinter(address account) external;
   function renounceMinter() external;
   function transferOwnership(address newOwner) external;
+
+  function balances(address account) external view returns (Balance memory);
+  function _totalSupply() external view returns (Balance memory);
+  function _factor() external view returns (uint256);
+  function refactorCount() external view returns (uint256);
 }
