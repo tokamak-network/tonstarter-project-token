@@ -41,7 +41,7 @@ contract PowerTONSwapper is
         address _wton,
         address _tos,
         address _uniswapRouter,
-        address _tonStakedToken,
+        address _autocoinageSnapshot,
         address _layer2Registry,
         address _seigManager
         )
@@ -50,7 +50,7 @@ contract PowerTONSwapper is
         wton = _wton;
         tos = ITOS(_tos);
         uniswapRouter = ISwapRouter(_uniswapRouter);
-        tonStakedToken = _tonStakedToken;
+        autocoinageSnapshot = _autocoinageSnapshot;
         layer2Registry = _layer2Registry;
         seigManager = _seigManager;
     }
@@ -128,14 +128,14 @@ contract PowerTONSwapper is
     function onDeposit(address layer2, address account, uint256 amount)
         external override onlySeigManagerOrOwner
     {
-        IAutoCoinageSnapshot(tonStakedToken).sync(layer2, account);
+        IAutoCoinageSnapshot(autocoinageSnapshot).sync(layer2, account);
         emit OnDeposit(layer2, account, amount);
     }
 
     function onWithdraw(address layer2, address account, uint256 amount)
         external override onlySeigManagerOrOwner
     {
-        IAutoCoinageSnapshot(tonStakedToken).sync(layer2, account);
+        IAutoCoinageSnapshot(autocoinageSnapshot).sync(layer2, account);
         emit OnWithdraw(layer2, account, amount);
     }
 

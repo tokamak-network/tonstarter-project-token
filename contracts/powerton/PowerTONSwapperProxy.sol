@@ -28,7 +28,7 @@ contract PowerTONSwapperProxy is
         address _wton,
         address _tos,
         address _uniswapRouter,
-        address _tonStakedToken,
+        address _autocoinageSnapshot,
         address _layer2Registry,
         address _seigManager
     ) {
@@ -47,7 +47,7 @@ contract PowerTONSwapperProxy is
         wton = _wton;
         tos = ITOS(_tos);
         uniswapRouter = ISwapRouter(_uniswapRouter);
-        tonStakedToken = _tonStakedToken;
+        autocoinageSnapshot = _autocoinageSnapshot;
         layer2Registry = _layer2Registry;
         seigManager = _seigManager;
 

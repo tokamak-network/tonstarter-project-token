@@ -5,6 +5,57 @@ const {
   } = require("web3-utils");
 
 
+task("deploy-autocoinage-snapshot", "")
+  .addParam("name", "Name")
+  .addParam("symbol", "Symbol")
+  .addParam("seigManagerAddress", "SeigManager Manager")
+  .addParam("layer2RegistryAddress", "Layer2Registry Manager")
+  .setAction(async function ({ name, symbol, seigManagerAddress, layer2RegistryAddress }) {
+      const [admin] = await ethers.getSigners();
+
+      const AutoCoinageSnapshot = await ethers.getContractFactory("AutoCoinageSnapshot");
+      autoCoinageSnapshot = await AutoCoinageSnapshot.connect(admin).deploy();
+      await autoCoinageSnapshot.deployed();
+
+      console.log("AutoCoinageSnapshot Deployed:", autoCoinageSnapshot.address);
+
+      const AutoCoinageSnapshotProxy = await ethers.getContractFactory("AutoCoinageSnapshotProxy");
+      const autoCoinageSnapshotProxy = await AutoCoinageSnapshotProxy.connect(admin).deploy();
+      await autoCoinageSnapshotProxy.deployed();
+
+      console.log("AutoCoinageSnapshotProxy Deployed:", autoCoinageSnapshotProxy.address);
+
+    //   const AutoCoinageSnapshotProxyABI = JSON.parse(await fs.readFileSync("./abi/AutoCoinageSnapshotProxy.json")).abi;
+    //   const AutoCoinageSnapshotABI = JSON.parse(await fs.readFileSync("./abi/AutoCoinageSnapshot.json")).abi;
+
+    //   const autoCoinageSnapshotProxy = new ethers.Contract(
+    //       "0x4D727B91A774eEC8aD91F14320853393648d313C",
+    //       AutoCoinageSnapshotProxyABI,
+    //       ethers.provider
+    //   );
+
+        await (await autoCoinageSnapshotProxy.connect(admin).upgradeTo(autoCoinageSnapshot.address)).wait();
+        await (await autoCoinageSnapshotProxy.connect(admin).setNameSymbolDecimals(name, symbol, 27)).wait();
+
+        const AutoCoinageSnapshotABI = JSON.parse(await fs.readFileSync("./abi/AutoCoinageSnapshot.json")).abi;
+        const autoCoinageSnapshot = new ethers.Contract(
+                    autoCoinageSnapshotProxy.address,
+                    AutoCoinageSnapshotABI,
+                    ethers.provider
+              );
+        await (await autoCoinageSnapshot.connect(admin).setAddress(seigManagerAddress, layer2RegistryAddress)).wait();
+
+      await run("verify", {
+        address: autoCoinageSnapshot.address,
+        constructorArgsParams: [],
+      });
+
+      await run("verify", {
+        address: autoCoinageSnapshotProxy.address,
+        constructorArgsParams: [],
+      });
+  });
+
 task("deploy-erc20-recorder", "")
     // .addParam("ownerAddress", "")
     .addParam("depositManagerAddress", "Deposit Manager")
@@ -62,14 +113,14 @@ task("deploy-power-ton-swapper", "")
     .addParam("wtonAddress")
     .addParam("tosAddress")
     .addParam("uniswapRouterAddress")
-    .addParam("erc20RecorderAddress")
+    .addParam("autocoinageSnapshotAddress")
     .addParam("layer2RegistryAddress")
     .addParam("seigManagerAddress")
     .setAction(async function ({
       wtonAddress,
       tosAddress,
       uniswapRouterAddress,
-      erc20RecorderAddress,
+      autocoinageSnapshotAddress,
       layer2RegistryAddress,
       seigManagerAddress,
     }) {
@@ -84,7 +135,7 @@ task("deploy-power-ton-swapper", "")
 
         const PowerTONSwapperProxyContract = await ethers.getContractFactory("PowerTONSwapperProxy");
         const powerTONSwapperProxy = await PowerTONSwapperProxyContract.connect(admin).deploy(
-            powerTONSwapperImpl.address, wtonAddress, tosAddress, uniswapRouterAddress, erc20RecorderAddress, layer2RegistryAddress, seigManagerAddress);
+            powerTONSwapperImpl.address, wtonAddress, tosAddress, uniswapRouterAddress, autocoinageSnapshotAddress, layer2RegistryAddress, seigManagerAddress);
 
         await powerTONSwapperProxy.deployed();
 
@@ -97,7 +148,7 @@ task("deploy-power-ton-swapper", "")
 
         await run("verify", {
           address: powerTONSwapperProxy.address,
-          constructorArgsParams: [powerTONSwapperImpl.address, wtonAddress, tosAddress, uniswapRouterAddress, erc20RecorderAddress, layer2RegistryAddress, seigManagerAddress],
+          constructorArgsParams: [powerTONSwapperImpl.address, wtonAddress, tosAddress, uniswapRouterAddress, autocoinageSnapshotAddress, layer2RegistryAddress, seigManagerAddress],
          });
 
     });
