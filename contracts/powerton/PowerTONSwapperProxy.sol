@@ -2,8 +2,7 @@
 pragma solidity ^0.8.0;
 
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
+//import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "../interfaces/IPoolProxy.sol";
 
@@ -29,7 +28,7 @@ contract PowerTONSwapperProxy is
         address _wton,
         address _tos,
         address _uniswapRouter,
-        address _erc20Recorder,
+        address _tonStakedToken,
         address _layer2Registry,
         address _seigManager
     ) {
@@ -48,7 +47,7 @@ contract PowerTONSwapperProxy is
         wton = _wton;
         tos = ITOS(_tos);
         uniswapRouter = ISwapRouter(_uniswapRouter);
-        erc20Recorder = _erc20Recorder;
+        tonStakedToken = _tonStakedToken;
         layer2Registry = _layer2Registry;
         seigManager = _seigManager;
 

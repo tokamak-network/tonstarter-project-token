@@ -2,28 +2,30 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/Counters.sol";
-import "@openzeppelin/contracts/utils/Arrays.sol";
+import "../libraries/SArrays.sol";
 
 import "../powerton/AutoRefactorCoinageI.sol";
 import "../powerton/SeigManagerI.sol";
 import "../powerton/Layer2RegistryI.sol";
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+// import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 import "./AutoCoinageSnapshotStorage.sol";
-import "hardhat/console.sol";
+// import "hardhat/console.sol";
 
 import { DSMath } from "../libraries/DSMath.sol";
 
-contract AutoCoinageSnapshot is AutoCoinageSnapshotStorage, ERC20, DSMath {
-    using Arrays for uint256[];
+contract AutoCoinageSnapshot is AutoCoinageSnapshotStorage, DSMath {
+    using SArrays for uint256[];
     using Counters for Counters.Counter;
 
 
     event onSnapshot(address indexed layer2, uint256 id);
-    event onUpdateLayer2FactorPublic(address layer2, uint256 balances, uint256 refactoredCounts, uint256 remains, uint256 _factor, uint256 refactorCount);
+    event onSyncLayer2(address indexed layer2, uint256 id);
+    event onSyncLayer2Address(address indexed layer2, address account, uint256 id);
+    event onSyncLayer2Batch(address indexed layer2, uint256 id);
 
-    constructor(string memory name_, string memory symbol_) ERC20(name_, symbol_) {
+    constructor() {
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _setupRole(ADMIN_ROLE, msg.sender);
         _setupRole(UPDATE_ROLE, msg.sender);
@@ -36,16 +38,18 @@ contract AutoCoinageSnapshot is AutoCoinageSnapshotStorage, ERC20, DSMath {
         layer2Lagistry = _layer2Lagistry;
     }
 
+    function setNameSymbolDecimals(string memory name_, string memory symbol_, uint256 decimals_) external onlyRole(ADMIN_ROLE) {
+        name = name_;
+        symbol = symbol_;
+        decimals = decimals_;
+    }
 
     function _factorAt(address layer2, uint256 snapshotId) internal view virtual returns (bool, uint256, uint256) {
 
         FactorSnapshots storage snapshots = factorSnapshots[layer2];
 
-        // require(snapshotId > 0, "ERC20Snapshot: id is 0");
-        // require(snapshotId <= getCurrentLayer2SnapshotId(layer2), "ERC20Snapshot: nonexistent id");
-
         if(snapshotId > 0 && snapshotId <= getCurrentLayer2SnapshotId(layer2) ) {
-            uint256 index = snapshots.ids.findUpperBound(snapshotId);
+            uint256 index = snapshots.ids.findIndex(snapshotId);
 
             if (index == snapshots.ids.length) {
                 return (false, 0, 0);
@@ -61,14 +65,10 @@ contract AutoCoinageSnapshot is AutoCoinageSnapshotStorage, ERC20, DSMath {
     function _valueAt(address layer2, uint256 snapshotId, BalanceSnapshots storage snapshots) internal view
         returns (bool, uint256, uint256, uint256)
     {
-        // require(snapshotId > 0, "ERC20Snapshot: id is 0");
-        // require(snapshotId <= getCurrentLayer2SnapshotId(layer2), "ERC20Snapshot: nonexistent id");
-        console.log('_valueAt snapshotId %s, cur %s', snapshotId, getCurrentLayer2SnapshotId(layer2)  );
+
         if(snapshotId > 0 && snapshotId <= getCurrentLayer2SnapshotId(layer2) ) {
-            uint256 index = snapshots.ids.findUpperBound(snapshotId);
-            console.log('_valueAt index %s, snapshots.ids.length %s ', index, snapshots.ids.length);
+            uint256 index = snapshots.ids.findIndex(snapshotId);
             if (index == snapshots.ids.length) {
-                console.log('_valueAt false 1');
                 // return (false, 0, 0, 0);
                 if(index > 0 ){
                     return (true, snapshots.balances[index-1], snapshots.refactoredCounts[index-1], snapshots.remains[index-1]);
@@ -79,7 +79,7 @@ contract AutoCoinageSnapshot is AutoCoinageSnapshotStorage, ERC20, DSMath {
                 return (true, snapshots.balances[index], snapshots.refactoredCounts[index], snapshots.remains[index]);
             }
         } else {
-            console.log('_valueAt false 2');
+
             return (false, 0, 0, 0);
         }
 
@@ -89,6 +89,7 @@ contract AutoCoinageSnapshot is AutoCoinageSnapshotStorage, ERC20, DSMath {
         internal view virtual
         returns (bool, uint256, uint256, uint256)
     {
+
         (bool snapshotted, uint256 balances, uint256 refactoredCounts, uint256 remains) = _valueAt(layer2, snapshotId, accountBalanceSnapshots[layer2][account]);
 
         return (snapshotted, balances, refactoredCounts, remains);
@@ -121,7 +122,6 @@ contract AutoCoinageSnapshot is AutoCoinageSnapshotStorage, ERC20, DSMath {
     }
 
 
-
     function _snapshot(address layer2) internal virtual returns (uint256) {
         currentLayer2SnapshotId[layer2]++;
         blockNumberBySnapshotId[layer2][currentLayer2SnapshotId[layer2]] = block.number;
@@ -148,20 +148,10 @@ contract AutoCoinageSnapshot is AutoCoinageSnapshotStorage, ERC20, DSMath {
             uint256 refactoredCounts,
             uint256 remains
     ) internal  {
-        // console.log('========================== ');
-        // console.log('_updateBalanceSnapshots ');
-        // console.log('balances %s', balances);
-        // console.log('refactoredCounts %s', refactoredCounts);
-        // console.log('remains %s', remains);
-
 
         uint256 currentId = getCurrentLayer2SnapshotId(layer2);
-        // console.log('currentId %s', currentId);
-        // console.log('snapshots.ids %s', snapshots.ids);
 
         uint256 index = _lastSnapshotId(snapshots.ids);
-
-        // console.log(' index %s',index);
 
         if (index < currentId) {
             snapshots.ids.push(currentId);
@@ -219,35 +209,29 @@ contract AutoCoinageSnapshot is AutoCoinageSnapshotStorage, ERC20, DSMath {
             refactorCount
         );
     }
-    /*
-    function updateLayer2FactorPublic(address layer2) public {
 
-        address coinage  = SeigManagerI(seigManager).coinages(layer2);
-        require(coinage != address(0), "zero coinages");
+    function onSnapshotAggregator() public onlyRole(SNAPSHOT_ROLE) returns (uint256) {
+        snashotAggregatorTotal++;
 
-        //(uint256 balances, uint256 refactoredCounts, uint256 remains) = AutoRefactorCoinageI(coinage)._totalSupply();
+        uint256 numberOfLayer2s = Layer2RegistryI(layer2Lagistry).numLayer2s();
 
-        AutoRefactorCoinageI.Balance memory totalBalance  = AutoRefactorCoinageI(coinage)._totalSupply();
-        uint256 balances = totalBalance.balance;
-        uint256 refactoredCounts = totalBalance.refactoredCount;
-        uint256 remains = totalBalance.remain;
+        for (uint256 i = 0; i < numberOfLayer2s; i++) {
+            address layer2 = Layer2RegistryI(layer2Lagistry).layer2ByIndex(i);
+            if(SeigManagerI(seigManager).coinages(layer2) != address(0)){
 
-        uint256 _factor  = AutoRefactorCoinageI(coinage)._factor();
-        uint256 refactorCount  = AutoRefactorCoinageI(coinage).refactorCount();
-
-        updateLayer2TotalSupply(layer2, balances, refactoredCounts, remains);
-        updateLayer2Factor(layer2, _factor, refactorCount);
-
-        emit onUpdateLayer2FactorPublic(layer2, balances, refactoredCounts, remains, _factor, refactorCount);
+                Layer2Snapshots storage snapshot = snashotAggregator[snashotAggregatorTotal];
+                snapshot.layer2s.push(layer2);
+                snapshot.snapshotIds.push(getCurrentLayer2SnapshotId(layer2));
+            }
+        }
+        return snashotAggregatorTotal;
     }
-    */
-
 
     function snapshot(address layer2) public onlyRole(SNAPSHOT_ROLE) returns (uint256) {
         return _snapshot(layer2);
     }
 
-    function sync(address layer2) public {
+    function sync(address layer2) public returns (uint256){
 
         address coinage  = SeigManagerI(seigManager).coinages(layer2);
         require(coinage != address(0), "zero coinages");
@@ -260,13 +244,16 @@ contract AutoCoinageSnapshot is AutoCoinageSnapshotStorage, ERC20, DSMath {
         uint256 _factor  = AutoRefactorCoinageI(coinage)._factor();
         uint256 refactorCount  = AutoRefactorCoinageI(coinage).refactorCount();
 
-        snapshot(layer2);
+        uint256 snapshotId = _snapshot(layer2);
         updateLayer2TotalSupply(layer2, tbalances, trefactoredCounts, tremains);
         updateLayer2Factor(layer2, _factor, refactorCount);
+
+        emit onSyncLayer2(layer2, snapshotId);
+        return snapshotId;
     }
 
 
-    function sync(address layer2, address account) public {
+    function sync(address layer2, address account) public returns (uint256) {
 
         address coinage  = SeigManagerI(seigManager).coinages(layer2);
         require(coinage != address(0), "zero coinages");
@@ -285,28 +272,30 @@ contract AutoCoinageSnapshot is AutoCoinageSnapshotStorage, ERC20, DSMath {
         uint256 _factor  = AutoRefactorCoinageI(coinage)._factor();
         uint256 refactorCount  = AutoRefactorCoinageI(coinage).refactorCount();
 
-        snapshot(layer2);
+        uint256 snapshotId = _snapshot(layer2);
         updateLayer2Account(layer2, account, balances, refactoredCounts, remains);
         updateLayer2TotalSupply(layer2, tbalances, trefactoredCounts, tremains);
         updateLayer2Factor(layer2, _factor, refactorCount);
+
+        emit onSyncLayer2Address(layer2, account, snapshotId);
+        return snapshotId;
     }
 
-    function syncBatchOnline(
+    function syncBatch(
         address layer2,
         address[] memory accounts
         )
-        external returns (bool)
+        external returns (uint256)
     {
         address coinage  = SeigManagerI(seigManager).coinages(layer2);
         require(coinage != address(0), "zero coinages");
         require(accounts.length > 0, "zero accounts");
 
-        snapshot(layer2);
+        uint256 snapshotId = _snapshot(layer2);
 
         for (uint256 i = 0; i < accounts.length; ++i) {
-
+            //console.log('syncBatch ',layer2, accounts[i]);
             AutoRefactorCoinageI.Balance memory accountBalance  = AutoRefactorCoinageI(coinage).balances(accounts[i]);
-
             updateLayer2Account(layer2, accounts[i], accountBalance.balance, accountBalance.refactoredCount, accountBalance.remain);
         }
 
@@ -321,9 +310,10 @@ contract AutoCoinageSnapshot is AutoCoinageSnapshotStorage, ERC20, DSMath {
         updateLayer2TotalSupply(layer2, tbalances, trefactoredCounts, tremains);
         updateLayer2Factor(layer2, _factor, refactorCount);
 
-        return true;
+        emit onSyncLayer2Batch(layer2, snapshotId);
+        return snapshotId;
     }
-
+    /*
     function syncBactchOffline(
         address layer2,
         address[] memory accounts,
@@ -354,8 +344,7 @@ contract AutoCoinageSnapshot is AutoCoinageSnapshotStorage, ERC20, DSMath {
 
         return true;
     }
-
-
+    */
 
     function getLayer2TotalSupplyInTokamak(address layer2) public view
         returns (
@@ -485,7 +474,7 @@ contract AutoCoinageSnapshot is AutoCoinageSnapshotStorage, ERC20, DSMath {
         (snapshotted, snapShotBalance, snapShotRefactoredCount, snapShotRemain) = _valueAt(layer2, currentId, snapshots);
     }
 
-     function currentFactorSnapshots(address layer2) public view
+    function currentFactorSnapshots(address layer2) public view
         returns (
                 bool snapshotted,
                 uint256 snapShotFactor,
@@ -513,12 +502,7 @@ contract AutoCoinageSnapshot is AutoCoinageSnapshotStorage, ERC20, DSMath {
         return currentLayer2SnapshotId[layer2];
     }
 
-    // function getCurrentAccountSnapshotId(address layer2, address account) public view returns (uint256) {
-    //     return currentAccountSnapshotId[layer2][account];
-    // }
-
-
-    function balanceOf(address account) public view override returns (uint256)
+    function balanceOf(address account) public view  returns (uint256)
     {
         uint256 numberOfLayer2s = Layer2RegistryI(layer2Lagistry).numLayer2s();
         uint256 accountAmount = 0;
@@ -529,11 +513,11 @@ contract AutoCoinageSnapshot is AutoCoinageSnapshotStorage, ERC20, DSMath {
                 accountAmount += balanceOf(layer2, account);
             }
         }
-        console.log("balanceOf(account) %s", accountAmount);
+        //console.log("balanceOf(account) %s", accountAmount);
         return accountAmount;
     }
 
-    function totalSupply() public view override returns (uint256)
+    function totalSupply() public view  returns (uint256)
     {
         uint256 numberOfLayer2s = Layer2RegistryI(layer2Lagistry).numLayer2s();
         uint256 totalAmount = 0;
@@ -558,28 +542,69 @@ contract AutoCoinageSnapshot is AutoCoinageSnapshotStorage, ERC20, DSMath {
     function balanceOfAt(address layer2, address account, uint256 snapshotId)
         public view returns (uint256)
     {
-         console.log('balanceOfAt ===layer2 : %s %s %s ',layer2, account, snapshotId);
+        // console.log('balanceOfAt ===layer2 : %s %s %s ',layer2, account, snapshotId);
         if(snapshotId > 0){
-            (bool snapshotted1, uint256 balances, uint256 refactoredCounts, uint256 remains) = _balanceOfAt(layer2, account, getCurrentLayer2SnapshotId(layer2));
-            (bool snapshotted2, uint256 factors, uint256 refactorCounts) = _factorAt(layer2, getCurrentLayer2SnapshotId(layer2));
+            (bool snapshotted1, uint256 balances, uint256 refactoredCounts, uint256 remains) = _balanceOfAt(layer2, account, snapshotId);
+            (bool snapshotted2, uint256 factors, uint256 refactorCounts) = _factorAt(layer2, snapshotId);
 
-            console.log('snapshotId %s', snapshotId);
-            console.log('snapshotted1 %s', snapshotted1);
-            console.log('balances %s', balances);
-            console.log('refactoredCounts %s', refactoredCounts);
-            console.log('remains %s', remains);
-            console.log('balanceOfAt =================');
+            // console.log('snapshotId %s', snapshotId);
+            // console.log('snapshotted1 %s', snapshotted1);
+            // console.log('balances %s', balances);
+            // console.log('refactoredCounts %s', refactoredCounts);
+            // console.log('remains %s', remains);
+            // console.log('balanceOfAt end =================');
             if(snapshotted1 &&  snapshotted2) {
                 uint256 bal = applyFactor(balances, refactoredCounts, factors, refactorCounts);
                 bal += remains;
 
-                 console.log('balanceOfAt : %s ',bal);
+                // console.log('balanceOfAt : %s %s ',snapshotId, bal);
                 return bal;
             } else {
                 return 0;
             }
         } else {
             return 0;
+        }
+    }
+
+    function balanceOfWithSnashotAggregator(address account, uint256 snashotAggregatorId)
+        public view returns (uint256 accountStaked)
+    {
+        accountStaked = 0;
+        if(snashotAggregatorId <= snashotAggregatorTotal){
+            Layer2Snapshots memory snapshots = snashotAggregator[snashotAggregatorId];
+            if(snapshots.layer2s.length == 0) return 0;
+            for(uint256 i = 0; i< snapshots.layer2s.length; i++){
+                accountStaked += balanceOfAt(snapshots.layer2s[i], account, snapshots.snapshotIds[i]);
+            }
+        }
+    }
+
+    function totalSupplyWithSnashotAggregator(uint256 snashotAggregatorId)
+        public view returns (uint256 totalStaked)
+    {
+        totalStaked = 0;
+        if(snashotAggregatorId <= snashotAggregatorTotal){
+            Layer2Snapshots memory snapshots = snashotAggregator[snashotAggregatorId];
+            if(snapshots.layer2s.length == 0) return 0;
+            for(uint256 i = 0; i< snapshots.layer2s.length; i++){
+                totalStaked += totalSupplyAt(snapshots.layer2s[i], snapshots.snapshotIds[i]);
+            }
+        }
+    }
+
+    function stakedAmountWithSnashotAggregator(address account, uint256 snashotAggregatorId)
+        public view returns (uint256 accountStaked, uint256 totalStaked)
+    {
+        accountStaked = 0;
+        totalStaked = 0;
+        if(snashotAggregatorId <= snashotAggregatorTotal){
+            Layer2Snapshots memory snapshots = snashotAggregator[snashotAggregatorId];
+            if(snapshots.layer2s.length == 0) return (0, 0);
+            for(uint256 i = 0; i< snapshots.layer2s.length; i++){
+                accountStaked += balanceOfAt(snapshots.layer2s[i], account, snapshots.snapshotIds[i]);
+                totalStaked += totalSupplyAt(snapshots.layer2s[i], snapshots.snapshotIds[i]);
+            }
         }
     }
 
@@ -589,12 +614,13 @@ contract AutoCoinageSnapshot is AutoCoinageSnapshotStorage, ERC20, DSMath {
         return totalSupplyAt(layer2, getCurrentLayer2SnapshotId(layer2));
     }
 
+
     function totalSupplyAt(address layer2, uint256 snapshotId)
         public view returns (uint256)
     {
         if(snapshotId > 0){
-            (bool snapshotted1, uint256 balances, uint256 refactoredCounts, uint256 remains) = _totalSupplyAt(layer2, getCurrentLayer2SnapshotId(layer2));
-            (bool snapshotted2, uint256 factors, uint256 refactorCounts) = _factorAt(layer2, getCurrentLayer2SnapshotId(layer2));
+            (bool snapshotted1, uint256 balances, uint256 refactoredCounts, uint256 remains) = _totalSupplyAt(layer2, snapshotId);
+            (bool snapshotted2, uint256 factors, uint256 refactorCounts) = _factorAt(layer2, snapshotId);
 
             if(snapshotted1 &&  snapshotted2) {
                 uint256 bal = applyFactor(balances, refactoredCounts, factors, refactorCounts);
@@ -609,27 +635,53 @@ contract AutoCoinageSnapshot is AutoCoinageSnapshotStorage, ERC20, DSMath {
 
     }
 
-    /**
-     * @dev Overrides _beforeTokenTransfer
-     */
-    function _beforeTokenTransfer(
-        address from,
-        address to,
-        uint256 amount
-    ) internal virtual override(ERC20) {
-
+    function lastSnapShotIndex(address layer2) public view
+        returns (uint256)
+    {
+        if(totalSupplySnapshots[layer2].ids.length == 0) return 0;
+        return totalSupplySnapshots[layer2].ids.length-1;
     }
 
-    function transfer(address recipient, uint256 amount) public virtual override returns (bool) {
+
+    function getAccountBalanceSnapsByIds(uint256 id, address layer2, address account) public view
+        returns (uint256, uint256, uint256, uint256)
+    {
+        BalanceSnapshots memory snapshot =  accountBalanceSnapshots[layer2][account];
+
+        if(id >= snapshot.ids.length)
+            return (snapshot.ids[snapshot.ids.length-1], snapshot.balances[snapshot.ids.length-1], snapshot.refactoredCounts[snapshot.ids.length-1], snapshot.remains[snapshot.ids.length-1]);
+        return (snapshot.ids[id], snapshot.balances[id], snapshot.refactoredCounts[id], snapshot.remains[id]);
+    }
+
+    function getAccountBalanceSnapsBySnapshotId(uint256 snapshotId, address layer2, address account) public view
+        returns (uint256, uint256, uint256, uint256)
+    {
+        BalanceSnapshots storage snapshot =  accountBalanceSnapshots[layer2][account];
+
+        if(snapshot.ids.length == 0) return (0,0,0,0);
+        // if(snapshotId > snapshot.ids[snapshot.ids.length-1])
+        //     return (snapshot.ids[snapshot.ids.length-1], snapshot.balances[snapshot.ids.length-1], snapshot.refactoredCounts[snapshot.ids.length-1], snapshot.remains[snapshot.ids.length-1]);
+
+        if(snapshotId > 0 && snapshotId <= getCurrentLayer2SnapshotId(layer2)) {
+            uint256 id = snapshot.ids.findIndex(snapshotId);
+            // console.log('getAccountBalanceSnapsBySnapshotId findIndex %s', id);
+            return (snapshot.ids[id], snapshot.balances[id], snapshot.refactoredCounts[id], snapshot.remains[id]);
+        } else {
+            return (0,0,0,0);
+        }
+    }
+
+
+    function transfer(address recipient, uint256 amount) public virtual returns (bool) {
         return false;
     }
 
 
-    function allowance(address owner, address spender) public view virtual override returns (uint256) {
+    function allowance(address owner, address spender) public view virtual returns (uint256) {
         return 0;
     }
 
-    function approve(address spender, uint256 amount) public virtual override returns (bool) {
+    function approve(address spender, uint256 amount) public virtual returns (bool) {
         return false;
     }
 
@@ -637,18 +689,17 @@ contract AutoCoinageSnapshot is AutoCoinageSnapshotStorage, ERC20, DSMath {
         address sender,
         address recipient,
         uint256 amount
-    ) public virtual override returns (bool) {
+    ) public virtual  returns (bool) {
         return false;
     }
 
-    function increaseAllowance(address spender, uint256 addedValue) public virtual override returns (bool) {
+    function increaseAllowance(address spender, uint256 addedValue) public virtual  returns (bool) {
         return false;
     }
 
-    function decreaseAllowance(address spender, uint256 subtractedValue) public virtual override returns (bool) {
+    function decreaseAllowance(address spender, uint256 subtractedValue) public virtual  returns (bool) {
         return false;
     }
-
 
 }
 

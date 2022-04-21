@@ -11,7 +11,7 @@ contract PowerTONSwapperStorage {
     address public wton;
     ITOS public tos;
     ISwapRouter public uniswapRouter;
-    address public erc20Recorder;
+    address public tonStakedToken;
     address public layer2Registry;
     address public seigManager;
 

@@ -13,6 +13,10 @@ contract AutoCoinageSnapshotStorage is AccessControl {
     bytes32 public constant UPDATE_ROLE = keccak256("UPDATE_ROLE");
     bytes32 public constant SNAPSHOT_ROLE = keccak256("SNAPSHOT_ROLE");
 
+    struct Layer2Snapshots {
+        address[] layer2s;
+        uint256[] snapshotIds;
+    }
 
     struct BalanceSnapshots {
         uint256[] ids;
@@ -53,7 +57,22 @@ contract AutoCoinageSnapshotStorage is AccessControl {
     //layer2 -> snapshot -> blockNumber
     mapping(address => mapping( uint256 => uint256))  internal blockNumberBySnapshotId;
 
+    //snashotAggregatorId ->
+    mapping(uint256 => Layer2Snapshots)  internal snashotAggregator;
+    uint256 public snashotAggregatorTotal;
+
     bool public pauseProxy;
     bool public migratedL2;
+
+
+    mapping(address => uint256) internal _balances;
+
+    mapping(address => mapping(address => uint256)) internal _allowances;
+
+    uint256 internal _totalSupply;
+
+    string public name;
+    string public symbol;
+    uint256 public decimals;
 
 }

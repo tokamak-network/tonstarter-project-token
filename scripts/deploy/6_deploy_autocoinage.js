@@ -6,25 +6,23 @@ const {
 const AutoCoinageSnapshotABI  = require("../../abi/AutoCoinageSnapshot.json");
 async function main() {
     const [admin] = await hre.ethers.getSigners();
-    await hre.ethers.provider.send("hardhat_setBalance", [
-      admin.address,
-      "0x56BC75E2D63100000",
-    ]);
+    // await hre.ethers.provider.send("hardhat_setBalance", [
+    //   admin.address,
+    //   "0x56BC75E2D63100000",
+    // ]);
 
-    let name = "TON Staked"
-    let symbol = "TST"
 
     // let deployedAddress="0x01d0c76C08dA157a52a633D02e6266366C157a03";
     // const autoCoinageSnapshot = await hre.ethers.getContractAt(AutoCoinageSnapshotABI.abi, deployedAddress, hre.ethers.provider);
     const AutoCoinageSnapshot = await hre.ethers.getContractFactory("AutoCoinageSnapshot");
-    const autoCoinageSnapshot = await AutoCoinageSnapshot.deploy(name, symbol);
+    const autoCoinageSnapshot = await AutoCoinageSnapshot.deploy();
 
     let tx = await autoCoinageSnapshot.deployed();
 
     console.log("tx:", tx.deployTransaction.hash);
     console.log("AutoCoinageSnapshot deployed to:", autoCoinageSnapshot.address);
 
-
+    /*
     let user = '0x3b9878ef988b086f13e5788ecab9a35e74082ed9';
     let layer2Address = "0x1fa621d238f30f6651ddc8bd5f4be21c6b894426";
 
@@ -33,7 +31,7 @@ async function main() {
 
     await autoCoinageSnapshot.connect(admin).setAddress(SeigManagerAddress, Layer2RegistryAddress);
     await autoCoinageSnapshot.snapshot(layer2Address);
-
+  */
 
     // await run("verify", {
     //   address: autoCoinageSnapshot.address,

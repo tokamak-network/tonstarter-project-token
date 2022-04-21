@@ -6,7 +6,7 @@ import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import "./AutoCoinageSnapshotStorage.sol";
 import "../stake/ProxyBase.sol";
 
-contract ProjectTokenProxy is
+contract AutoCoinageSnapshotProxy is
     AutoCoinageSnapshotStorage,
     ProxyBase
 {
@@ -26,9 +26,18 @@ contract ProjectTokenProxy is
         _setupRole(ADMIN_ROLE, msg.sender);
         _setupRole(UPDATE_ROLE, msg.sender);
         _setupRole(SNAPSHOT_ROLE, msg.sender);
-
+        snashotAggregatorTotal = 0;
         // _registerInterface(ERC20_RECEIVED);
+
+        decimals = 27;
     }
+
+    function setNameSymbolDecimals(string memory name_, string memory symbol_, uint256 decimals_) external onlyRole(ADMIN_ROLE) {
+        name = name_;
+        symbol = symbol_;
+        decimals = decimals_;
+    }
+
 
     function addOwner(address _owner)
         external
