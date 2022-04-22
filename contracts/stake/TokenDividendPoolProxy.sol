@@ -12,9 +12,6 @@ import "../interfaces/ITokenDividendPoolProxy.sol";
 
 import "hardhat/console.sol";
 
-/// @title The proxy of TOS Plaform
-/// @notice Admin can createVault, createStakeContract.
-/// User can excute the tokamak staking function of each contract through this logic.
 contract TokenDividendPoolProxy is
     TokenDividendPoolStorage,
     AccessibleCommon,
@@ -34,7 +31,7 @@ contract TokenDividendPoolProxy is
                 bytes32(uint256(keccak256("eip1967.proxy.implementation")) - 1)
         );
 
-        require(_impl != address(0), "LockTOSProxy: logic is zero");
+        require(_impl != address(0), "logic is zero");
 
         _setImplementation(_impl);
 
@@ -52,8 +49,8 @@ contract TokenDividendPoolProxy is
     /// @notice Set implementation contract
     /// @param impl New implementation contract address
     function upgradeTo(address impl) external override onlyOwner {
-        require(impl != address(0), "LockTOSProxy: input is zero");
-        require(_implementation() != impl, "LockTOSProxy: same");
+        require(impl != address(0), "input is zero");
+        require(_implementation() != impl, "same");
         _setImplementation(impl);
         emit Upgraded(impl);
     }
@@ -78,7 +75,7 @@ contract TokenDividendPoolProxy is
         address _impl = _implementation();
         require(
             _impl != address(0) && !pauseProxy,
-            "LockTOSProxy: impl OR proxy is false"
+            " impl OR proxy is false"
         );
 
         assembly {

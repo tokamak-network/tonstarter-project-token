@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/utils/math/Math.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-import "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import "../interfaces/IIERC20Snapshot.sol";
+// import "@openzeppelin/contracts/utils/math/Math.sol";
+// import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+// import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 import "../interfaces/ITokenDividendPool.sol";
 import "../libraries/LibTokenDividendPool.sol";
@@ -12,8 +12,7 @@ import "../libraries/LibTokenDividendPool.sol";
 import "../common/AccessibleCommon.sol";
 import "./TokenDividendPoolStorage.sol";
 
-import "../interfaces/IIERC20.sol";
-import "hardhat/console.sol";
+//import "hardhat/console.sol";
 
 contract TokenDividendPool is
     TokenDividendPoolStorage,
@@ -64,23 +63,23 @@ contract TokenDividendPool is
         ifFree
     {
         require(
-            IIERC20(erc20DividendAddress).totalSupply() > 0,
+            IIERC20Snapshot(erc20DividendAddress).totalSupply() > 0,
             "Total Supply is zero"
         );
 
         LibTokenDividendPool.Distribution storage distr = distributions[_token];
-        IERC20(_token).transferFrom(msg.sender, address(this), _amount);
+        IIERC20Snapshot(_token).transferFrom(msg.sender, address(this), _amount);
         if (distr.exists == false) {
             distributedTokens.push(_token);
         }
 
-        uint256 newBalance = IERC20(_token).balanceOf(address(this));
+        uint256 newBalance = IIERC20Snapshot(_token).balanceOf(address(this));
         uint256 increment = newBalance - distr.lastBalance;
         distr.exists = true;
         distr.lastBalance = newBalance;
         distr.totalDistribution = distr.totalDistribution + increment;
 
-        uint256 snapshotId = IIERC20(erc20DividendAddress).snapshot();
+        uint256 snapshotId = IIERC20Snapshot(erc20DividendAddress).snapshot();
         distr.snapshots.push(
             LibTokenDividendPool.SnapshotInfo(snapshotId, increment, block.timestamp)
         );
@@ -181,7 +180,7 @@ contract TokenDividendPool is
         );
 
         require(amountToClaim > 0, "Amount to be claimed is zero");
-        IERC20(_token).transfer(msg.sender, amountToClaim);
+        IIERC20Snapshot(_token).transfer(msg.sender, amountToClaim);
 
         distr.nonClaimedSnapshotIndex[_account] = _endSnapshotIndex;
         distr.lastBalance -= amountToClaim;
@@ -220,16 +219,16 @@ contract TokenDividendPool is
         uint256 _snapshotId,
         uint256 _totalDividendAmount
     ) internal view returns (uint256) {
-        uint256 balance = IIERC20(erc20DividendAddress).balanceOfAt(_account, _snapshotId);
+        uint256 balance = IIERC20Snapshot(erc20DividendAddress).balanceOfAt(_account, _snapshotId);
         if (balance == 0) {
             return 0;
         }
 
-        uint256 supply = IIERC20(erc20DividendAddress).totalSupplyAt(_snapshotId);
+        uint256 supply = IIERC20Snapshot(erc20DividendAddress).totalSupplyAt(_snapshotId);
         if (supply == 0) {
             return 0;
         }
-        console.log("Balance: %d, Total: %d, Dividend Amount: %d", balance, supply, _totalDividendAmount);
+        //console.log("Balance: %d, Total: %d, Dividend Amount: %d", balance, supply, _totalDividendAmount);
         return _totalDividendAmount * balance / supply;
     }
 }

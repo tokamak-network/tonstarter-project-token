@@ -55,6 +55,14 @@ contract PowerTONSwapper is
         seigManager = _seigManager;
     }
 
+    function setAutocoinageSnapshot(
+        address _autocoinageSnapshot
+        )
+        external onlyOwner
+    {
+        autocoinageSnapshot = _autocoinageSnapshot;
+    }
+
     function approveToUniswap() external {
         IERC20(wton).approve(
             address(uniswapRouter),
