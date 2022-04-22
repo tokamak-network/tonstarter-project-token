@@ -3,11 +3,9 @@ pragma solidity ^0.8.0;
 
 interface IAutoCoinageSnapshot {
 
-    /// onlyRole(SNAPSHOT_ROLE)
+    function snapshot() external returns (uint256);
     function snapshot(address layer2) external returns (uint256) ;
 
-
-    /// anybody
     function sync(address layer2) external returns (uint256);
     function sync(address layer2, address account) external returns (uint256);
     function syncBatch(address layer2,  address[] memory accounts) external returns (uint256);
@@ -79,8 +77,10 @@ interface IAutoCoinageSnapshot {
     function totalSupply() external view returns (uint256);
 
     function balanceOf(address layer2, address account) external view returns (uint256);
+    function balanceOfAt(address account, uint256 snashotAggregatorId) external view returns (uint256);
     function balanceOfAt(address layer2, address account, uint256 snapshotId) external view returns (uint256);
     function totalSupply(address layer2) external view returns (uint256);
+    function totalSupplyAt(uint256 snashotAggregatorId) external view returns (uint256 totalStaked);
     function totalSupplyAt(address layer2, uint256 snapshotId) external view returns (uint256);
 
 }

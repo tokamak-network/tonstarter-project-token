@@ -210,7 +210,8 @@ contract AutoCoinageSnapshot is AutoCoinageSnapshotStorage, DSMath {
         );
     }
 
-    function onSnapshotAggregator() public onlyRole(SNAPSHOT_ROLE) returns (uint256) {
+    //function onSnapshotAggregator() public onlyRole(SNAPSHOT_ROLE) returns (uint256) {
+    function snapshot() public returns (uint256) {
         snashotAggregatorTotal++;
 
         uint256 numberOfLayer2s = Layer2RegistryI(layer2Lagistry).numLayer2s();
@@ -219,9 +220,9 @@ contract AutoCoinageSnapshot is AutoCoinageSnapshotStorage, DSMath {
             address layer2 = Layer2RegistryI(layer2Lagistry).layer2ByIndex(i);
             if(SeigManagerI(seigManager).coinages(layer2) != address(0)){
 
-                Layer2Snapshots storage snapshot = snashotAggregator[snashotAggregatorTotal];
-                snapshot.layer2s.push(layer2);
-                snapshot.snapshotIds.push(getCurrentLayer2SnapshotId(layer2));
+                Layer2Snapshots storage snapshot_ = snashotAggregator[snashotAggregatorTotal];
+                snapshot_.layer2s.push(layer2);
+                snapshot_.snapshotIds.push(getCurrentLayer2SnapshotId(layer2));
             }
         }
         return snashotAggregatorTotal;
@@ -243,6 +244,11 @@ contract AutoCoinageSnapshot is AutoCoinageSnapshotStorage, DSMath {
 
         uint256 _factor  = AutoRefactorCoinageI(coinage)._factor();
         uint256 refactorCount  = AutoRefactorCoinageI(coinage).refactorCount();
+
+        if(!existLayer2s[layer2]) {
+            existLayer2s[layer2] = true;
+            layer2s.push(layer2);
+        }
 
         uint256 snapshotId = _snapshot(layer2);
         updateLayer2TotalSupply(layer2, tbalances, trefactoredCounts, tremains);
@@ -277,7 +283,18 @@ contract AutoCoinageSnapshot is AutoCoinageSnapshotStorage, DSMath {
         updateLayer2TotalSupply(layer2, tbalances, trefactoredCounts, tremains);
         updateLayer2Factor(layer2, _factor, refactorCount);
 
-        emit onSyncLayer2Address(layer2, account, snapshotId);
+        address layer2_ = layer2;
+        if(!existLayer2s[layer2_]) {
+            existLayer2s[layer2_] = true;
+            layer2s.push(layer2_);
+        }
+        address account_ = account;
+        if(!existAccounts[account_]) {
+            existAccounts[account_] = true;
+            uniqAccounts.push(account_);
+        }
+
+        emit onSyncLayer2Address(layer2_, account_, snapshotId);
         return snapshotId;
     }
 
@@ -297,6 +314,11 @@ contract AutoCoinageSnapshot is AutoCoinageSnapshotStorage, DSMath {
             //console.log('syncBatch ',layer2, accounts[i]);
             AutoRefactorCoinageI.Balance memory accountBalance  = AutoRefactorCoinageI(coinage).balances(accounts[i]);
             updateLayer2Account(layer2, accounts[i], accountBalance.balance, accountBalance.refactoredCount, accountBalance.remain);
+
+            if(!existAccounts[accounts[i]]) {
+                existAccounts[accounts[i]] = true;
+                uniqAccounts.push(accounts[i]);
+            }
         }
 
         AutoRefactorCoinageI.Balance memory totalBalance  = AutoRefactorCoinageI(coinage)._totalSupply();
@@ -307,6 +329,10 @@ contract AutoCoinageSnapshot is AutoCoinageSnapshotStorage, DSMath {
         uint256 _factor  = AutoRefactorCoinageI(coinage)._factor();
         uint256 refactorCount  = AutoRefactorCoinageI(coinage).refactorCount();
 
+         if(!existLayer2s[layer2]) {
+            existLayer2s[layer2] = true;
+            layer2s.push(layer2);
+        }
         updateLayer2TotalSupply(layer2, tbalances, trefactoredCounts, tremains);
         updateLayer2Factor(layer2, _factor, refactorCount);
 
@@ -517,7 +543,7 @@ contract AutoCoinageSnapshot is AutoCoinageSnapshotStorage, DSMath {
         return accountAmount;
     }
 
-    function totalSupply() public view  returns (uint256)
+    function totalSupply() public view returns (uint256)
     {
         uint256 numberOfLayer2s = Layer2RegistryI(layer2Lagistry).numLayer2s();
         uint256 totalAmount = 0;
@@ -567,7 +593,7 @@ contract AutoCoinageSnapshot is AutoCoinageSnapshotStorage, DSMath {
         }
     }
 
-    function balanceOfWithSnashotAggregator(address account, uint256 snashotAggregatorId)
+    function balanceOfAt(address account, uint256 snashotAggregatorId)
         public view returns (uint256 accountStaked)
     {
         accountStaked = 0;
@@ -580,18 +606,7 @@ contract AutoCoinageSnapshot is AutoCoinageSnapshotStorage, DSMath {
         }
     }
 
-    function totalSupplyWithSnashotAggregator(uint256 snashotAggregatorId)
-        public view returns (uint256 totalStaked)
-    {
-        totalStaked = 0;
-        if(snashotAggregatorId <= snashotAggregatorTotal){
-            Layer2Snapshots memory snapshots = snashotAggregator[snashotAggregatorId];
-            if(snapshots.layer2s.length == 0) return 0;
-            for(uint256 i = 0; i< snapshots.layer2s.length; i++){
-                totalStaked += totalSupplyAt(snapshots.layer2s[i], snapshots.snapshotIds[i]);
-            }
-        }
-    }
+
 
     function stakedAmountWithSnashotAggregator(address account, uint256 snashotAggregatorId)
         public view returns (uint256 accountStaked, uint256 totalStaked)
@@ -614,6 +629,18 @@ contract AutoCoinageSnapshot is AutoCoinageSnapshotStorage, DSMath {
         return totalSupplyAt(layer2, getCurrentLayer2SnapshotId(layer2));
     }
 
+    function totalSupplyAt(uint256 snashotAggregatorId)
+        public view returns (uint256 totalStaked)
+    {
+        totalStaked = 0;
+        if(snashotAggregatorId <= snashotAggregatorTotal){
+            Layer2Snapshots memory snapshots = snashotAggregator[snashotAggregatorId];
+            if(snapshots.layer2s.length == 0) return 0;
+            for(uint256 i = 0; i< snapshots.layer2s.length; i++){
+                totalStaked += totalSupplyAt(snapshots.layer2s[i], snapshots.snapshotIds[i]);
+            }
+        }
+    }
 
     function totalSupplyAt(address layer2, uint256 snapshotId)
         public view returns (uint256)
@@ -646,26 +673,24 @@ contract AutoCoinageSnapshot is AutoCoinageSnapshotStorage, DSMath {
     function getAccountBalanceSnapsByIds(uint256 id, address layer2, address account) public view
         returns (uint256, uint256, uint256, uint256)
     {
-        BalanceSnapshots memory snapshot =  accountBalanceSnapshots[layer2][account];
-
-        if(id >= snapshot.ids.length)
-            return (snapshot.ids[snapshot.ids.length-1], snapshot.balances[snapshot.ids.length-1], snapshot.refactoredCounts[snapshot.ids.length-1], snapshot.remains[snapshot.ids.length-1]);
-        return (snapshot.ids[id], snapshot.balances[id], snapshot.refactoredCounts[id], snapshot.remains[id]);
+        BalanceSnapshots memory snapshot_ =  accountBalanceSnapshots[layer2][account];
+        uint256 len = snapshot_.ids.length;
+        if(id >= len)
+            return (snapshot_.ids[len], snapshot_.balances[len], snapshot_.refactoredCounts[len], snapshot_.remains[len]);
+        return (snapshot_.ids[id], snapshot_.balances[id], snapshot_.refactoredCounts[id], snapshot_.remains[id]);
     }
 
     function getAccountBalanceSnapsBySnapshotId(uint256 snapshotId, address layer2, address account) public view
         returns (uint256, uint256, uint256, uint256)
     {
-        BalanceSnapshots storage snapshot =  accountBalanceSnapshots[layer2][account];
+        BalanceSnapshots storage snapshot_ =  accountBalanceSnapshots[layer2][account];
 
-        if(snapshot.ids.length == 0) return (0,0,0,0);
-        // if(snapshotId > snapshot.ids[snapshot.ids.length-1])
-        //     return (snapshot.ids[snapshot.ids.length-1], snapshot.balances[snapshot.ids.length-1], snapshot.refactoredCounts[snapshot.ids.length-1], snapshot.remains[snapshot.ids.length-1]);
+        if(snapshot_.ids.length == 0) return (0,0,0,0);
 
         if(snapshotId > 0 && snapshotId <= getCurrentLayer2SnapshotId(layer2)) {
-            uint256 id = snapshot.ids.findIndex(snapshotId);
+            uint256 id = snapshot_.ids.findIndex(snapshotId);
             // console.log('getAccountBalanceSnapsBySnapshotId findIndex %s', id);
-            return (snapshot.ids[id], snapshot.balances[id], snapshot.refactoredCounts[id], snapshot.remains[id]);
+            return (snapshot_.ids[id], snapshot_.balances[id], snapshot_.refactoredCounts[id], snapshot_.remains[id]);
         } else {
             return (0,0,0,0);
         }
@@ -673,15 +698,6 @@ contract AutoCoinageSnapshot is AutoCoinageSnapshotStorage, DSMath {
 
 
     function transfer(address recipient, uint256 amount) public virtual returns (bool) {
-        return false;
-    }
-
-
-    function allowance(address owner, address spender) public view virtual returns (uint256) {
-        return 0;
-    }
-
-    function approve(address spender, uint256 amount) public virtual returns (bool) {
         return false;
     }
 
@@ -693,6 +709,18 @@ contract AutoCoinageSnapshot is AutoCoinageSnapshotStorage, DSMath {
         return false;
     }
 
+    function allowance(address owner, address spender) public view virtual returns (uint256) {
+        return 0;
+    }
+    /*
+    function allowance(address owner, address spender) public view virtual returns (uint256) {
+        return 0;
+    }
+
+    function approve(address spender, uint256 amount) public virtual returns (bool) {
+        return false;
+    }
+
     function increaseAllowance(address spender, uint256 addedValue) public virtual  returns (bool) {
         return false;
     }
@@ -700,7 +728,7 @@ contract AutoCoinageSnapshot is AutoCoinageSnapshotStorage, DSMath {
     function decreaseAllowance(address spender, uint256 subtractedValue) public virtual  returns (bool) {
         return false;
     }
-
+    */
 }
 
 

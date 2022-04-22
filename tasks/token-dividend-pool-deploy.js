@@ -14,7 +14,7 @@ task("deploy-autocoinage-snapshot", "")
       const [admin] = await ethers.getSigners();
 
       const AutoCoinageSnapshot = await ethers.getContractFactory("AutoCoinageSnapshot");
-      autoCoinageSnapshot = await AutoCoinageSnapshot.connect(admin).deploy();
+      let autoCoinageSnapshot = await AutoCoinageSnapshot.connect(admin).deploy();
       await autoCoinageSnapshot.deployed();
 
       console.log("AutoCoinageSnapshot Deployed:", autoCoinageSnapshot.address);
@@ -38,7 +38,7 @@ task("deploy-autocoinage-snapshot", "")
         await (await autoCoinageSnapshotProxy.connect(admin).setNameSymbolDecimals(name, symbol, 27)).wait();
 
         const AutoCoinageSnapshotABI = JSON.parse(await fs.readFileSync("./abi/AutoCoinageSnapshot.json")).abi;
-        const autoCoinageSnapshot = new ethers.Contract(
+        const autoCoinageSnapshotContract = new ethers.Contract(
                     autoCoinageSnapshotProxy.address,
                     AutoCoinageSnapshotABI,
                     ethers.provider

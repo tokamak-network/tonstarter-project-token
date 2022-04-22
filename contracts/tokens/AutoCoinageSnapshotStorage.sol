@@ -65,14 +65,23 @@ contract AutoCoinageSnapshotStorage is AccessControl {
     bool public migratedL2;
 
 
+    //--- unused
     mapping(address => uint256) internal _balances;
 
     mapping(address => mapping(address => uint256)) internal _allowances;
 
     uint256 internal _totalSupply;
 
+
+    //---
     string public name;
     string public symbol;
     uint256 public decimals;
 
+
+    //--
+    address[] public layer2s;
+    mapping(address => bool) public existLayer2s;
+    address[] public uniqAccounts;
+    mapping(address => bool) public existAccounts;
 }

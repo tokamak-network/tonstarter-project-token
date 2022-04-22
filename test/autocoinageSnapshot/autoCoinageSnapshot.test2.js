@@ -59,7 +59,7 @@ describe("AutoCoinageSnapshot - test2", function () {
 
   it("2. 스냅샷 어그리게이터  ", async function () {
 
-    await autoCoinageSnapshot.onSnapshotAggregator();
+    await autoCoinageSnapshot.snapshot();
     let id =  await autoCoinageSnapshot.snashotAggregatorTotal();
     let totalSupply =  await autoCoinageSnapshot["totalSupply()"]();
     let balanceOf =  await autoCoinageSnapshot["balanceOf(address)"](admin.address);
@@ -84,7 +84,7 @@ describe("AutoCoinageSnapshot - test2", function () {
 
   it("4. 스냅샷 어그리게이터  ", async function () {
 
-    await autoCoinageSnapshot.onSnapshotAggregator();
+    await autoCoinageSnapshot.snapshot();
     let id =  await autoCoinageSnapshot.snashotAggregatorTotal();
     let totalSupply =  await autoCoinageSnapshot["totalSupply()"]();
     let balanceOf =  await autoCoinageSnapshot["balanceOf(address)"](admin.address);
@@ -102,8 +102,8 @@ describe("AutoCoinageSnapshot - test2", function () {
 
     for(let i=0; i< snapshotAggregatorIds.length; i++){
 
-      let totalSupply =  await autoCoinageSnapshot["totalSupplyWithSnashotAggregator(uint256)"](snapshotAggregatorIds[i]);
-      let balanceOf =  await autoCoinageSnapshot["balanceOfWithSnashotAggregator(address,uint256)"](snapshotAggregatorIds[i], admin.address);
+      let totalSupply =  await autoCoinageSnapshot["totalSupplyAt(uint256)"](snapshotAggregatorIds[i]);
+      let balanceOf =  await autoCoinageSnapshot["balanceOfAt(address,uint256)"](snapshotAggregatorIds[i], admin.address);
 
       expect(totalSupplys[i]).to.be.eq(totalSupply);
       expect(balanceOfs[i]).to.be.eq(balanceOf);
