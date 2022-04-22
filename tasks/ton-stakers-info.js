@@ -6,7 +6,12 @@ const {
   getLayer2List,
   getTONStakedAmount,
   erc20RecorderMint,
-  concatStakers
+  concatStakers,
+  getStakersListOfLayers,
+  getAutocoinageData,
+  getTotalSupplyLayer2,
+  getBalanceLayer2Account,
+  syncAutocoinageData
 } = require("../test/helpers/ton-stakers");
 
 task("get-layer2-list", "Retrieve and save layer2 list into a file")
@@ -273,4 +278,41 @@ task("display-ton-staked-amount", "Retrieve and save accounts and their staked a
     let end = Math.min(totalStakedWei.indexOf('.'), totalStakedWei.length) ;
     console.log(totalStakedWei.substring(0,end));
 
+  })
+
+task("get-autocoindata", "Retrieve and save Aautocoinage Sanpshot data")
+  .addParam("seigManagerAddress", "Seig Manager Address")
+  .setAction(async ({ seigManagerAddress }) => {
+    await getAutocoinageData(seigManagerAddress);
+  })
+
+task("get-stakers-list-layer2s", "Retrieve and save layer2 list into a file")
+  .addParam("depositManagerAddress", "Seig Manager Address")
+  .addParam("startBlockNumber", "Start Block Number")
+  .addParam("endBlockNumber", "End Block Number")
+  .setAction(async ({ depositManagerAddress, startBlockNumber, endBlockNumber }) => {
+    await getStakersListOfLayers(depositManagerAddress, startBlockNumber, endBlockNumber);
+  })
+
+
+task("get-layer2s-balance", "Retrieve and save layer2 list into a file")
+  .addParam("seigManagerAddress", "Seig Manager Address")
+  .addParam("layer2Address", "Layer2 Address")
+  .setAction(async ({ seigManagerAddress, layer2Address }) => {
+    await getTotalSupplyLayer2(seigManagerAddress, layer2Address);
+  })
+
+task("get-layer2s-balance-user", "Retrieve and save layer2 list into a file")
+  .addParam("seigManagerAddress", "Seig Manager Address")
+  .addParam("layer2Address", "Layer2 Address")
+  .addParam("accountAddress", "Account Address")
+  .setAction(async ({ seigManagerAddress, layer2Address, accountAddress}) => {
+    await getBalanceLayer2Account(seigManagerAddress, layer2Address, accountAddress);
+  })
+
+
+task("sync-autocoindata", "Sync Aautocoinage Sanpshot data")
+  .addParam("autoCoinageSnapshotAddress", "AutoCoinage Snapshot  Address")
+  .setAction(async ({ autoCoinageSnapshotAddress }) => {
+    await syncAutocoinageData(autoCoinageSnapshotAddress);
   })

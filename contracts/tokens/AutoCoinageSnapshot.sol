@@ -339,7 +339,7 @@ contract AutoCoinageSnapshot is AutoCoinageSnapshotStorage, DSMath {
         emit onSyncLayer2Batch(layer2, snapshotId);
         return snapshotId;
     }
-    /*
+
     function syncBactchOffline(
         address layer2,
         address[] memory accounts,
@@ -354,7 +354,7 @@ contract AutoCoinageSnapshot is AutoCoinageSnapshotStorage, DSMath {
         require(accounts.length == balances.length, "No balances same length");
         require(accounts.length == refactoredCounts.length, "No refactoredCounts same length");
         require(accounts.length == remains.length, "No remains same length");
-        snapshot(layer2);
+        _snapshot(layer2);
         for (uint256 i = 0; i < accounts.length; ++i) {
             updateLayer2Account(
                 layer2,
@@ -370,7 +370,7 @@ contract AutoCoinageSnapshot is AutoCoinageSnapshotStorage, DSMath {
 
         return true;
     }
-    */
+
 
     function getLayer2TotalSupplyInTokamak(address layer2) public view
         returns (

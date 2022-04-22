@@ -56,6 +56,37 @@ task("deploy-autocoinage-snapshot", "")
       });
   });
 
+
+task("upgrade-autocoinage-snapshot", "")
+.addParam("autoCoinageAddress", "AutoCoinage Manager")
+.setAction(async function ({ autoCoinageAddress }) {
+    const [admin] = await ethers.getSigners();
+
+
+    const AutoCoinageSnapshot = await ethers.getContractFactory("AutoCoinageSnapshot");
+    let autoCoinageSnapshot = await AutoCoinageSnapshot.connect(admin).deploy();
+    await autoCoinageSnapshot.deployed();
+    console.log("AutoCoinageSnapshotImp Deployed:", autoCoinageSnapshot.address);
+
+
+    const AutoCoinageSnapshotProxyABI = JSON.parse(await fs.readFileSync("./abi/AutoCoinageSnapshotProxy.json")).abi;
+    const AutoCoinageSnapshotABI = JSON.parse(await fs.readFileSync("./abi/AutoCoinageSnapshot.json")).abi;
+
+    const autoCoinageSnapshotProxy = new ethers.Contract(
+        autoCoinageAddress,
+        AutoCoinageSnapshotProxyABI,
+        ethers.provider
+    );
+
+    await (await autoCoinageSnapshotProxy.connect(admin).upgradeTo(autoCoinageSnapshot.address)).wait();
+
+    await run("verify", {
+      address: autoCoinageSnapshot.address,
+      constructorArgsParams: [],
+    });
+
+});
+
 task("deploy-erc20-recorder", "")
     // .addParam("ownerAddress", "")
     .addParam("depositManagerAddress", "Deposit Manager")
