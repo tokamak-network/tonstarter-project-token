@@ -13,6 +13,10 @@ task("deploy-autocoinage-snapshot", "")
   .setAction(async function ({ name, symbol, seigManagerAddress, layer2RegistryAddress }) {
       const [admin] = await ethers.getSigners();
 
+    await hre.ethers.provider.send("hardhat_setBalance", [
+      admin.address,
+      "0x56BC75E2D63100000",
+    ]);
       const AutoCoinageSnapshot = await ethers.getContractFactory("AutoCoinageSnapshot");
       let autoCoinageSnapshot = await AutoCoinageSnapshot.connect(admin).deploy();
       await autoCoinageSnapshot.deployed();
@@ -43,7 +47,7 @@ task("deploy-autocoinage-snapshot", "")
                     AutoCoinageSnapshotABI,
                     ethers.provider
               );
-        await (await autoCoinageSnapshot.connect(admin).setAddress(seigManagerAddress, layer2RegistryAddress)).wait();
+        await (await autoCoinageSnapshotContract.connect(admin).setAddress(seigManagerAddress, layer2RegistryAddress)).wait();
 
       await run("verify", {
         address: autoCoinageSnapshot.address,
@@ -127,12 +131,13 @@ task("deploy-erc20-recorder", "")
       // dividendPool = await ethers.getContractAt("TokenDividendPool", dividendPoolProxy.address);
 
       console.log("Token Dividend Pool Implementation Deployed:", dividendPoolImpl.address);
-      await run("verify", {
+        console.log("Token Dividend Pool Proxy Deployed:", dividendPoolProxy.address);
+
+     await run("verify", {
         address: dividendPoolImpl.address,
         constructorArgsParams: [],
      });
 
-     console.log("Token Dividend Pool Proxy Deployed:", dividendPoolProxy.address);
      await run("verify", {
       address: dividendPoolProxy.address,
       constructorArgsParams: [dividendPoolImpl.address, admin.address],

@@ -311,11 +311,18 @@ const getStakersListOfLayers = async (depositManagerAddress, startBlockNumber, e
   let allInfo = {};
   try{
     for(let i=0; i< layer2sUnique.length; i++){
-      if(!stakersOfLayers[layer2sUnique[i]])
+      if(!stakersOfLayers[layer2sUnique[i]] && !stakersOfLayersExist[layer2sUnique[i]])
         continue;
 
-      let out = stakersOfLayers[layer2sUnique[i]];
-      if(stakersOfLayersExist[layer2sUnique[i]]) out = out.concat(stakersOfLayersExist[layer2sUnique[i]]);
+      let out = {};
+      if(!stakersOfLayers[layer2sUnique[i]]) {
+        out = stakersOfLayersExist[layer2sUnique[i]];
+      } else if(!stakersOfLayersExist[layer2sUnique[i]]){
+        out = stakersOfLayers[layer2sUnique[i]];
+      } else {
+        out = stakersOfLayers[layer2sUnique[i]];
+        if(stakersOfLayersExist[layer2sUnique[i]]) out = out.concat(stakersOfLayersExist[layer2sUnique[i]]);
+      }
 
       const stakersUnique = out.filter((v, idx, self) => self.indexOf(v) === idx);
       console.log("stakersUnique length: ", layer2sUnique[i], stakersUnique.length);
@@ -357,8 +364,6 @@ const getAutocoinageData = async (seigManagerAddress) => {
     let layerFactor = [];
     try{
         if(!stakersOfLayers[layer2Address]) return;
-
-
         let accounts = stakersOfLayers[layer2Address];
         if(!accounts || accounts.length == 0) return;
 
@@ -392,7 +397,7 @@ const getAutocoinageData = async (seigManagerAddress) => {
         for(let j = 0; j < accounts.length; j++){
             let account = accounts[j];
             let balance = await autoCoinage.balances(account);
-            //console.log(account, balance);
+            if(j%10 == 0) console.log(j);
             accountList.push(account.toLowerCase());
             balanceList.push(balance.balance.toString());
             refactoredCountList.push(balance.refactoredCount.toString());
@@ -430,8 +435,8 @@ const syncAutocoinageData = async (autoCoinageSnapshotAddress) => {
   const AutoCoinageSnapshotABI = require("../../abi/AutoCoinageSnapshot.json").abi;
 
 
-  //for(let i = 0; i < layer2sUnique.length; i++){
-  for(let i = 1; i < layer2sUnique.length; i++){
+  for(let i = 0; i < layer2sUnique.length; i++){
+  //for(let i = 0; i < 1; i++){
     let layer2Address = layer2sUnique[i];
 
     const autoCoinageSnapshot = new ethers.Contract(
@@ -441,6 +446,7 @@ const syncAutocoinageData = async (autoCoinageSnapshotAddress) => {
     );
 
     const snapshots = JSON.parse(await fs.readFileSync("./data/coin-"+layer2Address+".json"));
+    let batchSize = 200; //360
 
     let accounts = snapshots.accounts;
     let balances = snapshots.balances;
@@ -449,48 +455,60 @@ const syncAutocoinageData = async (autoCoinageSnapshotAddress) => {
     let layerTotal = snapshots.layerTotal;
     let layerFactor = snapshots.layerFactor;
 
-    let accountList = [];
-    let balanceList = [];
-    let refactoredCountList = [];
-    let remainList = [];
-    let layerTotalList = [];
-    let layerFactorList = [];
+    let cumAccount = 0;
+    let loopCount = Math.floor(accounts.length/batchSize)+1;
 
-    try{
-        if(!accounts) return;
-        if(!balances) return;
-        if(!refactoredCounts) return;
-        if(!remains) return;
-        if(!layerTotal) return;
-        if(!layerFactor) return;
+    for(let c = 0; c < loopCount; c++){
 
-        for(let i=0; i< layerTotal.length; i++){
-          layerTotalList.push(ethers.BigNumber.from(layerTotal[i]));
-        }
-        for(let i=0; i< layerFactor.length; i++){
-          layerFactorList.push(ethers.BigNumber.from(layerFactor[i]));
-        }
-        for(let i=0; i< accounts.length; i++){
-          accountList.push(accounts[i]);
-          balanceList.push(ethers.BigNumber.from(balances[i]));
-          refactoredCountList.push(ethers.BigNumber.from(refactoredCounts[i]));
-          remainList.push(ethers.BigNumber.from(remains[i]));
-        }
+      let start = c * batchSize;
+      let end = start + batchSize;
+      if(end > accounts.length)  end = accounts.length;
 
-        await autoCoinageSnapshot.connect(admin).syncBactchOffline(
-          layer2Address,
-          accountList,
-          balanceList,
-          refactoredCountList,
-          remainList,
-          layerTotalList,
-          layerFactorList
-        );
+      let accountList = [];
+      let balanceList = [];
+      let refactoredCountList = [];
+      let remainList = [];
+      let layerTotalList = [];
+      let layerFactorList = [];
 
-        console.log(i, 'syncAutocoinageData end ', layer2Address);
+      try{
+          if(!accounts) return;
+          if(!balances) return;
+          if(!refactoredCounts) return;
+          if(!remains) return;
+          if(!layerTotal) return;
+          if(!layerFactor) return;
 
-    }catch(error){
-      console.log('syncAutocoinageData error',i, layer2Address, error);
+          for(let i=0; i< layerTotal.length; i++){
+            layerTotalList.push(ethers.BigNumber.from(layerTotal[i]));
+          }
+          for(let i=0; i< layerFactor.length; i++){
+            layerFactorList.push(ethers.BigNumber.from(layerFactor[i]));
+          }
+
+
+          for(let i = start; i < end; i++){
+            accountList.push(accounts[i]);
+            balanceList.push(ethers.BigNumber.from(balances[i]));
+            refactoredCountList.push(ethers.BigNumber.from(refactoredCounts[i]));
+            remainList.push(ethers.BigNumber.from(remains[i]));
+          }
+
+          await autoCoinageSnapshot.connect(admin).syncBactchOffline(
+            layer2Address,
+            accountList,
+            balanceList,
+            refactoredCountList,
+            remainList,
+            layerTotalList,
+            layerFactorList
+          );
+
+          console.log(i, 'syncAutocoinageData end ',start, end,  layer2Address);
+
+      }catch(error){
+        console.log('syncAutocoinageData error',i, start, end, layer2Address, error);
+      }
     }
   }
 }
@@ -521,6 +539,26 @@ const getTotalSupplyLayer2 = async (seigManagerAddress, layer2Address) => {
     } catch(error){
       console.log('error',error);
     }
+
+
+}
+
+const getTotalSupplyLayer2WithAutyoCoinageSnapshot = async (autoCoinageSnapshotAddress, layer2Address) => {
+  const [admin] = await ethers.getSigners();
+
+  const autoCoinageSnapshotABI = require("../../abi/AutoCoinageSnapshot.json").abi;
+
+  try{
+    const autoCoinageSnapshot = new ethers.Contract(
+      autoCoinageSnapshotAddress,
+      autoCoinageSnapshotABI,
+      ethers.provider
+  );
+    let totalSupply =  await autoCoinageSnapshot["totalSupply(address)"](layer2Address);
+    console.log('totalSupply',totalSupply);
+  } catch(error){
+    console.log('error',error);
+  }
 
 
 }
@@ -557,6 +595,56 @@ const getBalanceLayer2Account = async (seigManagerAddress, layer2Address, accoun
     console.log('error',error);
   }
 
+}
+
+const getBalanceLayer2AccountWithAutyoCoinageSnapshot = async (autoCoinageSnapshotAddress, layer2Address, accountAddress) => {
+  const [admin] = await ethers.getSigners();
+
+  const autoCoinageSnapshotABI = require("../../abi/AutoCoinageSnapshot.json").abi;
+  console.log('autoCoinageSnapshotAddress',autoCoinageSnapshotAddress);
+  try{
+    const autoCoinageSnapshot = new ethers.Contract(
+      autoCoinageSnapshotAddress,
+      autoCoinageSnapshotABI,
+      ethers.provider
+  );
+    let totalSupply =  await autoCoinageSnapshot["totalSupply(address)"](layer2Address);
+    console.log('totalSupply',totalSupply);
+    console.log('accountAddress',accountAddress);
+
+    let amount = await autoCoinageSnapshot["balanceOf(address,address)"](layer2Address, accountAddress);
+    console.log('balanceOf in layer2Address ',amount);
+
+  } catch(error){
+    console.log('error',error);
+  }
+
+}
+
+
+
+const viewAutoCoinageSnapshotAddress = async (autoCoinageSnapshotAddress ) => {
+  const [admin] = await ethers.getSigners();
+
+  const autoCoinageSnapshotABI = require("../../abi/AutoCoinageSnapshot.json").abi;
+  console.log('autoCoinageSnapshotAddress', autoCoinageSnapshotAddress);
+  try{
+    const autoCoinageSnapshot = new ethers.Contract(
+      autoCoinageSnapshotAddress,
+      autoCoinageSnapshotABI,
+      ethers.provider
+  );
+
+    let layer2Registry =  await autoCoinageSnapshot.layer2Registry();
+    console.log('layer2Registry',layer2Registry);
+
+    let seigManager =  await autoCoinageSnapshot.seigManager();
+    console.log('seigManager',seigManager);
+
+
+  } catch(error){
+    console.log('error',error);
+  }
 
 }
 
@@ -572,5 +660,8 @@ module.exports = {
     getStakersListOfLayers,
     getTotalSupplyLayer2,
     getBalanceLayer2Account,
-    syncAutocoinageData
+    syncAutocoinageData,
+    getTotalSupplyLayer2WithAutyoCoinageSnapshot,
+    getBalanceLayer2AccountWithAutyoCoinageSnapshot,
+    viewAutoCoinageSnapshotAddress
   }

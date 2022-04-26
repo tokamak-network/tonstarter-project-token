@@ -32,10 +32,10 @@ contract AutoCoinageSnapshot is AutoCoinageSnapshotStorage, DSMath {
         _setupRole(SNAPSHOT_ROLE, msg.sender);
     }
 
-    function setAddress(address _seigManager, address _layer2Lagistry) external onlyRole(ADMIN_ROLE) {
-        require(_seigManager != address(0) && _layer2Lagistry != address(0) , "zero address");
+    function setAddress(address _seigManager, address _layer2Registry) external onlyRole(ADMIN_ROLE) {
+        require(_seigManager != address(0) && _layer2Registry != address(0) , "zero address");
         seigManager = _seigManager;
-        layer2Lagistry = _layer2Lagistry;
+        layer2Registry = _layer2Registry;
     }
 
     function setNameSymbolDecimals(string memory name_, string memory symbol_, uint256 decimals_) external onlyRole(ADMIN_ROLE) {
@@ -214,10 +214,10 @@ contract AutoCoinageSnapshot is AutoCoinageSnapshotStorage, DSMath {
     function snapshot() public returns (uint256) {
         snashotAggregatorTotal++;
 
-        uint256 numberOfLayer2s = Layer2RegistryI(layer2Lagistry).numLayer2s();
+        uint256 numberOfLayer2s = Layer2RegistryI(layer2Registry).numLayer2s();
 
         for (uint256 i = 0; i < numberOfLayer2s; i++) {
-            address layer2 = Layer2RegistryI(layer2Lagistry).layer2ByIndex(i);
+            address layer2 = Layer2RegistryI(layer2Registry).layer2ByIndex(i);
             if(SeigManagerI(seigManager).coinages(layer2) != address(0)){
 
                 Layer2Snapshots storage snapshot_ = snashotAggregator[snashotAggregatorTotal];
@@ -418,10 +418,10 @@ contract AutoCoinageSnapshot is AutoCoinageSnapshotStorage, DSMath {
                 uint256 accountAmount
         )
     {
-        uint256 numberOfLayer2s = Layer2RegistryI(layer2Lagistry).numLayer2s();
+        uint256 numberOfLayer2s = Layer2RegistryI(layer2Registry).numLayer2s();
         accountAmount = 0;
         for (uint256 i = 0; i < numberOfLayer2s; i++) {
-            address layer2 = Layer2RegistryI(layer2Lagistry).layer2ByIndex(i);
+            address layer2 = Layer2RegistryI(layer2Registry).layer2ByIndex(i);
             address coinage  = SeigManagerI(seigManager).coinages(layer2);
             if(coinage != address(0)){
                 accountAmount += AutoRefactorCoinageI(coinage).balanceOf(account);
@@ -434,10 +434,10 @@ contract AutoCoinageSnapshot is AutoCoinageSnapshotStorage, DSMath {
                 uint256 accountAmount
         )
     {
-        uint256 numberOfLayer2s = Layer2RegistryI(layer2Lagistry).numLayer2s();
+        uint256 numberOfLayer2s = Layer2RegistryI(layer2Registry).numLayer2s();
         accountAmount = 0;
         for (uint256 i = 0; i < numberOfLayer2s; i++) {
-            address layer2 = Layer2RegistryI(layer2Lagistry).layer2ByIndex(i);
+            address layer2 = Layer2RegistryI(layer2Registry).layer2ByIndex(i);
             address coinage  = SeigManagerI(seigManager).coinages(layer2);
             if(coinage != address(0)){
                 accountAmount += AutoRefactorCoinageI(coinage).totalSupply();
@@ -530,14 +530,22 @@ contract AutoCoinageSnapshot is AutoCoinageSnapshotStorage, DSMath {
 
     function balanceOf(address account) public view  returns (uint256)
     {
-        uint256 numberOfLayer2s = Layer2RegistryI(layer2Lagistry).numLayer2s();
+        uint256 numberOfLayer2s = Layer2RegistryI(layer2Registry).numLayer2s();
         uint256 accountAmount = 0;
+        // console.log("balanceOf  layer2Registry %s", layer2Registry);
+        // console.log("balanceOf  numberOfLayer2s %s", numberOfLayer2s);
+
         for (uint256 i = 0; i < numberOfLayer2s; i++) {
-            address layer2 = Layer2RegistryI(layer2Lagistry).layer2ByIndex(i);
+            address layer2 = Layer2RegistryI(layer2Registry).layer2ByIndex(i);
+            //console.log("layer2 %s", layer2);
+            /*
             address coinage  = SeigManagerI(seigManager).coinages(layer2);
+            console.log("coinage %s", coinage);
             if(coinage != address(0)){
                 accountAmount += balanceOf(layer2, account);
             }
+            */
+            accountAmount += SeigManagerI(seigManager).stakeOf(layer2, account);
         }
         //console.log("balanceOf(account) %s", accountAmount);
         return accountAmount;
@@ -545,14 +553,14 @@ contract AutoCoinageSnapshot is AutoCoinageSnapshotStorage, DSMath {
 
     function totalSupply() public view returns (uint256)
     {
-        uint256 numberOfLayer2s = Layer2RegistryI(layer2Lagistry).numLayer2s();
+        uint256 numberOfLayer2s = Layer2RegistryI(layer2Registry).numLayer2s();
         uint256 totalAmount = 0;
         for (uint256 i = 0; i < numberOfLayer2s; i++) {
-            address layer2 = Layer2RegistryI(layer2Lagistry).layer2ByIndex(i);
-            address coinage  = SeigManagerI(seigManager).coinages(layer2);
-            if(coinage != address(0)){
+            address layer2 = Layer2RegistryI(layer2Registry).layer2ByIndex(i);
+            //address coinage  = SeigManagerI(seigManager).coinages(layer2);
+            //if(coinage != address(0)){
                 totalAmount += totalSupply(layer2);
-            }
+            //}
         }
         return totalAmount;
     }

@@ -11,7 +11,10 @@ const {
   getAutocoinageData,
   getTotalSupplyLayer2,
   getBalanceLayer2Account,
-  syncAutocoinageData
+  syncAutocoinageData,
+  getTotalSupplyLayer2WithAutyoCoinageSnapshot,
+  getBalanceLayer2AccountWithAutyoCoinageSnapshot,
+  viewAutoCoinageSnapshotAddress
 } = require("../test/helpers/ton-stakers");
 
 task("get-layer2-list", "Retrieve and save layer2 list into a file")
@@ -302,6 +305,14 @@ task("get-layer2s-balance", "Retrieve and save layer2 list into a file")
     await getTotalSupplyLayer2(seigManagerAddress, layer2Address);
   })
 
+task("get-layer2s-balance-autocoinage-snapshot", "Retrieve and save layer2 list into a file")
+  .addParam("autoCoinageSnapshotAddress", "autoCoinageSnapshotAddress")
+  .addParam("layer2Address", "Layer2 Address")
+  .setAction(async ({ autoCoinageSnapshotAddress, layer2Address }) => {
+    await getTotalSupplyLayer2WithAutyoCoinageSnapshot(autoCoinageSnapshotAddress, layer2Address);
+  })
+
+
 task("get-layer2s-balance-user", "Retrieve and save layer2 list into a file")
   .addParam("seigManagerAddress", "Seig Manager Address")
   .addParam("layer2Address", "Layer2 Address")
@@ -311,8 +322,23 @@ task("get-layer2s-balance-user", "Retrieve and save layer2 list into a file")
   })
 
 
+task("get-layer2s-balance-user-autocoinage-snapshot", "Retrieve and save layer2 list into a file")
+  .addParam("autoCoinageSnapshotAddress", "autoCoinageSnapshotAddress")
+  .addParam("layer2Address", "Layer2 Address")
+  .addParam("accountAddress", "Account Address")
+  .setAction(async ({ autoCoinageSnapshotAddress, layer2Address, accountAddress}) => {
+    await getBalanceLayer2AccountWithAutyoCoinageSnapshot(autoCoinageSnapshotAddress, layer2Address, accountAddress);
+  })
+
+
 task("sync-autocoindata", "Sync Aautocoinage Sanpshot data")
   .addParam("autoCoinageSnapshotAddress", "AutoCoinage Snapshot  Address")
   .setAction(async ({ autoCoinageSnapshotAddress }) => {
     await syncAutocoinageData(autoCoinageSnapshotAddress);
+  })
+
+task("get-autocoinage-snapshot", "View Aautocoinage Sanpshot")
+  .addParam("autoCoinageSnapshotAddress", "Auto Coinage Snapshot Address")
+  .setAction(async ({ autoCoinageSnapshotAddress }) => {
+    await viewAutoCoinageSnapshotAddress(autoCoinageSnapshotAddress);
   })

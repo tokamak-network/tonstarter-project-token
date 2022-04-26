@@ -35,7 +35,7 @@ contract AutoCoinageSnapshotStorage is AccessControl {
     uint256 public REFACTOR_DIVIDER = 2;
 
     address public seigManager ;
-    address public layer2Lagistry ;
+    address public layer2Registry ;
 
     // layer2- account - balance
     mapping(address => mapping (address => BalanceSnapshots)) internal accountBalanceSnapshots;
