@@ -9,7 +9,7 @@ interface IAutoCoinageSnapshot {
     function sync(address layer2) external returns (uint256);
     function sync(address layer2, address account) external returns (uint256);
     function syncBatch(address layer2,  address[] memory accounts) external returns (uint256);
-
+    function addSync(address layer2, address account) external returns (uint256);
 
     function getLayer2TotalSupplyInTokamak(address layer2) external view
         returns (

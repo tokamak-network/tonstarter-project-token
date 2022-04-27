@@ -337,6 +337,8 @@ task("sync-autocoindata", "Sync Aautocoinage Sanpshot data")
     await syncAutocoinageData(autoCoinageSnapshotAddress);
   })
 
+
+
 task("get-autocoinage-snapshot", "View Aautocoinage Sanpshot")
   .addParam("autoCoinageSnapshotAddress", "Auto Coinage Snapshot Address")
   .setAction(async ({ autoCoinageSnapshotAddress }) => {

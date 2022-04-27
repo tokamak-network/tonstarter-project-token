@@ -61,6 +61,55 @@ task("deploy-autocoinage-snapshot", "")
   });
 
 
+
+  task("deploy-autocoinage-snapshot2", "")
+  .addParam("name", "Name")
+  .addParam("symbol", "Symbol")
+  .addParam("seigManagerAddress", "SeigManager Manager")
+  .addParam("layer2RegistryAddress", "Layer2Registry Manager")
+  .setAction(async function ({ name, symbol, seigManagerAddress, layer2RegistryAddress }) {
+      const [admin] = await ethers.getSigners();
+
+    // await hre.ethers.provider.send("hardhat_setBalance", [
+    //   admin.address,
+    //   "0x56BC75E2D63100000",
+    // ]);
+
+      const AutoCoinageSnapshot = await ethers.getContractFactory("AutoCoinageSnapshot2");
+      let autoCoinageSnapshot = await AutoCoinageSnapshot.connect(admin).deploy();
+      await autoCoinageSnapshot.deployed();
+
+      console.log("AutoCoinageSnapshot2 Deployed:", autoCoinageSnapshot.address);
+
+      const AutoCoinageSnapshotProxy = await ethers.getContractFactory("AutoCoinageSnapshotProxy2");
+      const autoCoinageSnapshotProxy = await AutoCoinageSnapshotProxy.connect(admin).deploy();
+      await autoCoinageSnapshotProxy.deployed();
+
+      console.log("AutoCoinageSnapshotProxy2 Deployed:", autoCoinageSnapshotProxy.address);
+
+        await (await autoCoinageSnapshotProxy.connect(admin).upgradeTo(autoCoinageSnapshot.address)).wait();
+        await (await autoCoinageSnapshotProxy.connect(admin).setNameSymbolDecimals(name, symbol, 27)).wait();
+
+        const AutoCoinageSnapshotABI = JSON.parse(await fs.readFileSync("./abi/AutoCoinageSnapshot2.json")).abi;
+        const autoCoinageSnapshotContract = new ethers.Contract(
+                    autoCoinageSnapshotProxy.address,
+                    AutoCoinageSnapshotABI,
+                    ethers.provider
+              );
+        await (await autoCoinageSnapshotContract.connect(admin).setAddress(seigManagerAddress, layer2RegistryAddress)).wait();
+
+      await run("verify", {
+        address: autoCoinageSnapshot.address,
+        constructorArgsParams: [],
+      });
+
+      await run("verify", {
+        address: autoCoinageSnapshotProxy.address,
+        constructorArgsParams: [],
+      });
+  });
+
+
 task("upgrade-autocoinage-snapshot", "")
 .addParam("autoCoinageAddress", "AutoCoinage Manager")
 .setAction(async function ({ autoCoinageAddress }) {

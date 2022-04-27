@@ -136,15 +136,15 @@ contract PowerTONSwapper is
     function onDeposit(address layer2, address account, uint256 amount)
         external override onlySeigManagerOrOwner
     {
-        IAutoCoinageSnapshot(autocoinageSnapshot).sync(layer2, account);
-        emit OnDeposit(layer2, account, amount);
+        IAutoCoinageSnapshot(autocoinageSnapshot).addSync(layer2, account);
+        //emit OnDeposit(layer2, account, amount);
     }
 
     function onWithdraw(address layer2, address account, uint256 amount)
         external override onlySeigManagerOrOwner
     {
-        IAutoCoinageSnapshot(autocoinageSnapshot).sync(layer2, account);
-        emit OnWithdraw(layer2, account, amount);
+        IAutoCoinageSnapshot(autocoinageSnapshot).addSync(layer2, account);
+        //emit OnWithdraw(layer2, account, amount);
     }
 
 }

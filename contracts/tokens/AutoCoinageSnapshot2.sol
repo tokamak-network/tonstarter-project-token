@@ -10,12 +10,12 @@ import "../powerton/Layer2RegistryI.sol";
 
 // import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
-import "./AutoCoinageSnapshotStorage.sol";
+import "./AutoCoinageSnapshotStorage2.sol";
 // import "hardhat/console.sol";
 
 import { DSMath } from "../libraries/DSMath.sol";
 
-contract AutoCoinageSnapshot is AutoCoinageSnapshotStorage, DSMath {
+contract AutoCoinageSnapshot2 is AutoCoinageSnapshotStorage2, DSMath {
     using SArrays for uint256[];
     using Counters for Counters.Counter;
 
@@ -209,11 +209,55 @@ contract AutoCoinageSnapshot is AutoCoinageSnapshotStorage, DSMath {
         );
     }
 
+
     function addSync(address layer2, address account) public returns (uint256) {
-        return sync(layer2, account);
+        //return sync(layer2, account);
+
+        bool existInput = false;
+        for(uint256 j = 0; j < needSyncLayer2s.length; j++){
+            if(needSyncLayer2s[j] == layer2) {
+                existInput = true;
+                break;
+            }
+        }
+        if(!existInput) needSyncLayer2s.push(layer2);
+
+        address[] memory accounts = needSyncs[layer2];
+        if(accounts.length == 0) {
+            needSyncs[layer2].push(account);
+            return needSyncs[layer2].length;
+        }
+
+        for(uint256 i = 0; i < accounts.length; i++){
+            if(accounts[i] == account) return needSyncs[layer2].length;
+        }
+
+        needSyncs[layer2].push(account);
+        return needSyncs[layer2].length;
     }
 
-    //function onSnapshotAggregator() public onlyRole(SNAPSHOT_ROLE) returns (uint256) {
+    function snapshot() public returns (uint256) {
+        snashotAggregatorTotal++;
+
+        if(needSyncLayer2s.length > 0){
+            Layer2Snapshots storage snapshot_ = snashotAggregator[snashotAggregatorTotal];
+
+            for(uint256 i = 0; i < needSyncLayer2s.length; i++){
+                address layer2 = needSyncLayer2s[i];
+                syncBatch(layer2,  needSyncs[layer2]);
+                snapshot_.layer2s.push(layer2);
+                snapshot_.snapshotIds.push(getCurrentLayer2SnapshotId(layer2));
+
+                delete needSyncs[layer2];
+            }
+
+            delete needSyncLayer2s;
+        }
+
+        return snashotAggregatorTotal;
+    }
+
+    /*
     function snapshot() public returns (uint256) {
         snashotAggregatorTotal++;
 
@@ -230,7 +274,7 @@ contract AutoCoinageSnapshot is AutoCoinageSnapshotStorage, DSMath {
         }
         return snashotAggregatorTotal;
     }
-
+    */
     function snapshot(address layer2) public onlyRole(SNAPSHOT_ROLE) returns (uint256) {
         return _snapshot(layer2);
     }
@@ -260,7 +304,6 @@ contract AutoCoinageSnapshot is AutoCoinageSnapshotStorage, DSMath {
         emit onSyncLayer2(layer2, snapshotId);
         return snapshotId;
     }
-
 
     function sync(address layer2, address account) public returns (uint256) {
 
@@ -305,7 +348,7 @@ contract AutoCoinageSnapshot is AutoCoinageSnapshotStorage, DSMath {
         address layer2,
         address[] memory accounts
         )
-        external returns (uint256)
+        public returns (uint256)
     {
         address coinage  = SeigManagerI(seigManager).coinages(layer2);
         require(coinage != address(0), "zero coinages");
