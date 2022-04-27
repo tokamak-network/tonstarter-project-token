@@ -211,49 +211,38 @@ contract AutoCoinageSnapshot2 is AutoCoinageSnapshotStorage2, DSMath {
 
 
     function addSync(address layer2, address account) public returns (uint256) {
-        //return sync(layer2, account);
 
-        bool existInput = false;
-        for(uint256 j = 0; j < needSyncLayer2s.length; j++){
-            if(needSyncLayer2s[j] == layer2) {
-                existInput = true;
-                break;
-            }
+        if(!existLayer2s[layer2]) {
+            existLayer2s[layer2] = true;
+            layer2s.push(layer2);
         }
-        if(!existInput) needSyncLayer2s.push(layer2);
 
         address[] memory accounts = needSyncs[layer2];
-        if(accounts.length == 0) {
-            needSyncs[layer2].push(account);
-            return needSyncs[layer2].length;
-        }
-
         for(uint256 i = 0; i < accounts.length; i++){
             if(accounts[i] == account) return needSyncs[layer2].length;
         }
-
         needSyncs[layer2].push(account);
         return needSyncs[layer2].length;
+    }
+
+    function layerSnapshotIds(uint256 snashotAggregatorId) public returns (address[] memory, uint256[] memory) {
+        Layer2Snapshots memory snapshot_ = snashotAggregator[snashotAggregatorId];
+        return (snapshot_.layer2s, snapshot_.snapshotIds);
     }
 
     function snapshot() public returns (uint256) {
         snashotAggregatorTotal++;
 
-        if(needSyncLayer2s.length > 0){
+        for(uint256 j = 0; j < layer2s.length;  j++){
             Layer2Snapshots storage snapshot_ = snashotAggregator[snashotAggregatorTotal];
+            address layer2 = layer2s[j];
+            if(needSyncs[layer2].length > 0) syncBatch(layer2,  needSyncs[layer2]);
 
-            for(uint256 i = 0; i < needSyncLayer2s.length; i++){
-                address layer2 = needSyncLayer2s[i];
-                syncBatch(layer2,  needSyncs[layer2]);
-                snapshot_.layer2s.push(layer2);
-                snapshot_.snapshotIds.push(getCurrentLayer2SnapshotId(layer2));
+            snapshot_.layer2s.push(layer2);
+            snapshot_.snapshotIds.push(getCurrentLayer2SnapshotId(layer2));
 
-                delete needSyncs[layer2];
-            }
-
-            delete needSyncLayer2s;
+            if(needSyncs[layer2].length > 0) delete needSyncs[layer2];
         }
-
         return snashotAggregatorTotal;
     }
 

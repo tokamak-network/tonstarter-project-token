@@ -4,13 +4,13 @@ const {
   keccak256,
 } = require("web3-utils");
 
-const AutoCoinageSnapshotABI  = require("../../abi/AutoCoinageSnapshot.json");
+const AutoCoinageSnapshotABI  = require("../../abi/AutoCoinageSnapshot2.json");
 const TONABI  = require("../../abi/TON.json");
 const DepositManagerABI  = require("../../abi/DepositManager.json");
 const DaoCommitteeABI  = require("../../abi/daoCommittee.json");
 const CandidateABI  = require("../../abi/Candidate.json");
 
-let deployedAddress="0x605F8Ace904568E53DE2D217E019C9212991C22f";
+let deployedAddress="0xa5373aC149686530a9DC1b54E6e314aA0f358F3B";
 let layer2Address = "0x1fa621d238f30f6651ddc8bd5f4be21c6b894426";
 let SeigManagerAddress = "0x957DaC3D3C4B82088A4939BE9A8063e20cB2efBE";
 let Layer2RegistryAddress = "0xA609Cb2b9b0A4845077D2C965B7C6DFE5F59c847";
@@ -34,10 +34,10 @@ describe("AutoCoinageSnapshot - test1", function () {
     user1 = signers[1];
     user2 = signers[2];
 
-    await hre.ethers.provider.send("hardhat_setBalance", [
-      user1.address,
-      "0x56BC75E2D63100000",
-    ]);
+    // await hre.ethers.provider.send("hardhat_setBalance", [
+    //   user1.address,
+    //   "0x56BC75E2D63100000",
+    // ]);
 
     accounts = [admin.address, user1.address, user2.address];
     autoCoinageSnapshot = await hre.ethers.getContractAt(AutoCoinageSnapshotABI.abi, deployedAddress, hre.ethers.provider);

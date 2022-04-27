@@ -87,6 +87,5 @@ contract AutoCoinageSnapshotStorage2 is AccessControl {
 
     // layer2 - accounts
     mapping(address => address[]) public needSyncs;
-    address[] public needSyncLayer2s;
 
 }

@@ -70,10 +70,10 @@ task("deploy-autocoinage-snapshot", "")
   .setAction(async function ({ name, symbol, seigManagerAddress, layer2RegistryAddress }) {
       const [admin] = await ethers.getSigners();
 
-    // await hre.ethers.provider.send("hardhat_setBalance", [
-    //   admin.address,
-    //   "0x56BC75E2D63100000",
-    // ]);
+    await hre.ethers.provider.send("hardhat_setBalance", [
+      admin.address,
+      "0x56BC75E2D63100000",
+    ]);
 
       const AutoCoinageSnapshot = await ethers.getContractFactory("AutoCoinageSnapshot2");
       let autoCoinageSnapshot = await AutoCoinageSnapshot.connect(admin).deploy();
