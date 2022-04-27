@@ -69,44 +69,49 @@ task("deploy-autocoinage-snapshot", "")
   .addParam("layer2RegistryAddress", "Layer2Registry Manager")
   .setAction(async function ({ name, symbol, seigManagerAddress, layer2RegistryAddress }) {
       const [admin] = await ethers.getSigners();
+      console.log('deploy-autocoinage-snapshot2' , admin.address);
 
-    await hre.ethers.provider.send("hardhat_setBalance", [
-      admin.address,
-      "0x56BC75E2D63100000",
-    ]);
+    // await hre.ethers.provider.send("hardhat_setBalance", [
+    //   admin.address,
+    //   "0x56BC75E2D63100000",
+    // ]);
+        try{
+            const AutoCoinageSnapshot = await ethers.getContractFactory("AutoCoinageSnapshot2");
+            let autoCoinageSnapshot = await AutoCoinageSnapshot.connect(admin).deploy();
+            await autoCoinageSnapshot.deployed();
 
-      const AutoCoinageSnapshot = await ethers.getContractFactory("AutoCoinageSnapshot2");
-      let autoCoinageSnapshot = await AutoCoinageSnapshot.connect(admin).deploy();
-      await autoCoinageSnapshot.deployed();
+            console.log("AutoCoinageSnapshot2 Deployed:", autoCoinageSnapshot.address);
 
-      console.log("AutoCoinageSnapshot2 Deployed:", autoCoinageSnapshot.address);
+            const AutoCoinageSnapshotProxy = await ethers.getContractFactory("AutoCoinageSnapshotProxy2");
+            const autoCoinageSnapshotProxy = await AutoCoinageSnapshotProxy.connect(admin).deploy();
+            await autoCoinageSnapshotProxy.deployed();
 
-      const AutoCoinageSnapshotProxy = await ethers.getContractFactory("AutoCoinageSnapshotProxy2");
-      const autoCoinageSnapshotProxy = await AutoCoinageSnapshotProxy.connect(admin).deploy();
-      await autoCoinageSnapshotProxy.deployed();
+            console.log("AutoCoinageSnapshotProxy2 Deployed:", autoCoinageSnapshotProxy.address);
 
-      console.log("AutoCoinageSnapshotProxy2 Deployed:", autoCoinageSnapshotProxy.address);
+                await (await autoCoinageSnapshotProxy.connect(admin).upgradeTo(autoCoinageSnapshot.address)).wait();
+                await (await autoCoinageSnapshotProxy.connect(admin).setNameSymbolDecimals(name, symbol, 27)).wait();
 
-        await (await autoCoinageSnapshotProxy.connect(admin).upgradeTo(autoCoinageSnapshot.address)).wait();
-        await (await autoCoinageSnapshotProxy.connect(admin).setNameSymbolDecimals(name, symbol, 27)).wait();
+                const AutoCoinageSnapshotABI = JSON.parse(await fs.readFileSync("./abi/AutoCoinageSnapshot2.json")).abi;
+                const autoCoinageSnapshotContract = new ethers.Contract(
+                            autoCoinageSnapshotProxy.address,
+                            AutoCoinageSnapshotABI,
+                            ethers.provider
+                    );
+                await (await autoCoinageSnapshotContract.connect(admin).setAddress(seigManagerAddress, layer2RegistryAddress)).wait();
 
-        const AutoCoinageSnapshotABI = JSON.parse(await fs.readFileSync("./abi/AutoCoinageSnapshot2.json")).abi;
-        const autoCoinageSnapshotContract = new ethers.Contract(
-                    autoCoinageSnapshotProxy.address,
-                    AutoCoinageSnapshotABI,
-                    ethers.provider
-              );
-        await (await autoCoinageSnapshotContract.connect(admin).setAddress(seigManagerAddress, layer2RegistryAddress)).wait();
+            await run("verify", {
+                address: autoCoinageSnapshot.address,
+                constructorArgsParams: [],
+            });
 
-      await run("verify", {
-        address: autoCoinageSnapshot.address,
-        constructorArgsParams: [],
-      });
+            await run("verify", {
+                address: autoCoinageSnapshotProxy.address,
+                constructorArgsParams: [],
+            });
 
-      await run("verify", {
-        address: autoCoinageSnapshotProxy.address,
-        constructorArgsParams: [],
-      });
+        } catch(error){
+            console.log('error' , error);
+        }
   });
 
 
