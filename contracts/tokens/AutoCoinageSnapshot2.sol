@@ -209,6 +209,15 @@ contract AutoCoinageSnapshot2 is AutoCoinageSnapshotStorage2, DSMath {
         );
     }
 
+    function addLayer2s(address[] memory _layers) external onlyRole(ADMIN_ROLE) returns (uint256) {
+
+        for(uint256 i = 0; i < _layers.length; i++){
+            if(!existLayer2s[_layers[i]]) {
+                existLayer2s[_layers[i]] = true;
+                layer2s.push(_layers[i]);
+            }
+        }
+    }
 
     function addSync(address layer2, address account) public returns (uint256) {
 
@@ -364,7 +373,7 @@ contract AutoCoinageSnapshot2 is AutoCoinageSnapshotStorage2, DSMath {
         uint256 _factor  = AutoRefactorCoinageI(coinage)._factor();
         uint256 refactorCount  = AutoRefactorCoinageI(coinage).refactorCount();
 
-         if(!existLayer2s[layer2]) {
+        if(!existLayer2s[layer2]) {
             existLayer2s[layer2] = true;
             layer2s.push(layer2);
         }
@@ -389,6 +398,11 @@ contract AutoCoinageSnapshot2 is AutoCoinageSnapshotStorage2, DSMath {
         require(accounts.length == balances.length, "No balances same length");
         require(accounts.length == refactoredCounts.length, "No refactoredCounts same length");
         require(accounts.length == remains.length, "No remains same length");
+
+        if(!existLayer2s[layer2]) {
+            existLayer2s[layer2] = true;
+            layer2s.push(layer2);
+        }
         _snapshot(layer2);
         for (uint256 i = 0; i < accounts.length; ++i) {
             updateLayer2Account(

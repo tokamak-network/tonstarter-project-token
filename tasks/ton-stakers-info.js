@@ -9,6 +9,7 @@ const {
   concatStakers,
   getStakersListOfLayers,
   getAutocoinageData,
+  updateAutocoinageData,
   getTotalSupplyLayer2,
   getBalanceLayer2Account,
   syncAutocoinageData,
@@ -288,6 +289,13 @@ task("get-autocoindata", "Retrieve and save Aautocoinage Sanpshot data")
   .setAction(async ({ seigManagerAddress }) => {
     await getAutocoinageData(seigManagerAddress);
   })
+
+task("update-autocoindata", "Retrieve and save Aautocoinage Sanpshot data")
+  .addParam("seigManagerAddress", "Seig Manager Address")
+  .setAction(async ({ seigManagerAddress }) => {
+    await updateAutocoinageData(seigManagerAddress);
+  })
+
 
 task("get-stakers-list-layer2s", "Retrieve and save layer2 list into a file")
   .addParam("depositManagerAddress", "Seig Manager Address")

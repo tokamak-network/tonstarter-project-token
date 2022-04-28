@@ -121,14 +121,14 @@ task("upgrade-autocoinage-snapshot", "")
     const [admin] = await ethers.getSigners();
 
 
-    const AutoCoinageSnapshot = await ethers.getContractFactory("AutoCoinageSnapshot");
+    const AutoCoinageSnapshot = await ethers.getContractFactory("AutoCoinageSnapshot2");
     let autoCoinageSnapshot = await AutoCoinageSnapshot.connect(admin).deploy();
     await autoCoinageSnapshot.deployed();
     console.log("AutoCoinageSnapshotImp Deployed:", autoCoinageSnapshot.address);
 
 
     const AutoCoinageSnapshotProxyABI = JSON.parse(await fs.readFileSync("./abi/AutoCoinageSnapshotProxy.json")).abi;
-    const AutoCoinageSnapshotABI = JSON.parse(await fs.readFileSync("./abi/AutoCoinageSnapshot.json")).abi;
+    const AutoCoinageSnapshotABI = JSON.parse(await fs.readFileSync("./abi/AutoCoinageSnapshot2.json")).abi;
 
     const autoCoinageSnapshotProxy = new ethers.Contract(
         autoCoinageAddress,
@@ -236,6 +236,7 @@ task("deploy-power-ton-swapper", "")
             constructorArgsParams: [],
            });
 
+
         await run("verify", {
           address: powerTONSwapperProxy.address,
           constructorArgsParams: [powerTONSwapperImpl.address, wtonAddress, tosAddress, uniswapRouterAddress, autocoinageSnapshotAddress, layer2RegistryAddress, seigManagerAddress],
@@ -269,7 +270,7 @@ task("set-erc20-recorder", "")
     });
 
 
-task("get-sum-of-lauer2s", "")
+task("get-sum-of-layer2s", "")
     .addParam("layer2RegistryAddress", "")
     .addParam("seigManagerAddress", "")
     .setAction(async ({  layer2RegistryAddress, seigManagerAddress }) => {

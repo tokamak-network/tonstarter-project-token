@@ -427,16 +427,191 @@ const getAutocoinageData = async (seigManagerAddress) => {
   }
 }
 
+// 레이어별 스냅샷 정보를 업데이트 하는 함수
+const updateAutocoinageData = async (seigManagerAddress) => {
+  const [admin] = await ethers.getSigners();
+
+  const layer2sUnique = JSON.parse(await fs.readFileSync("./data/layer2s-uniq-new.json"));
+  const stakersOfLayers = JSON.parse(await fs.readFileSync("./data/stakersOfLayers-new.json"));
+
+  const autoRefactorCoinageABI = require("../../abi/autoRefactorCoinage.json").abi;
+  const seigManagerABI = require("../../abi/seigManager.json").abi;
+
+  const seigManager = new ethers.Contract(
+      seigManagerAddress,
+      seigManagerABI,
+      ethers.provider
+  );
+
+  for(let i = 0; i < layer2sUnique.length; i++){
+  //for(let i = 0; i < 1; i++){
+    let layer2Address = layer2sUnique[i];
+    let out = {};
+    let accountList = [];
+    let balanceList = [];
+    let refactoredCountList = [];
+    let remainList = [];
+    let layerTotal = [];
+    let layerFactor = [];
+
+    try{
+        if(!stakersOfLayers[layer2Address]) return;
+        let accounts = stakersOfLayers[layer2Address];
+        if(!accounts || accounts.length == 0) return;
+
+
+        let layer2 = layer2Address;
+        let coinage = seigManager["coinages"](layer2);
+        const autoCoinage = new ethers.Contract(
+            coinage,
+            autoRefactorCoinageABI,
+            ethers.provider
+        );
+
+        let factor = await autoCoinage._factor();
+        let refactorCount = await autoCoinage.refactorCount();
+
+        console.log('factor', factor, refactorCount);
+        layerFactor.push(factor.toString());
+        layerFactor.push(refactorCount.toString());
+        console.log('layerFactor', layerFactor);
+
+        out["layerFactor"] = layerFactor;
+
+        let total = await autoCoinage._totalSupply();
+        console.log('total', total);
+        layerTotal.push(total.balance.toString());
+        layerTotal.push(total.refactoredCount.toString());
+        layerTotal.push(total.remain.toString());
+        console.log('layerTotal', layerTotal);
+
+        out["layerTotal"] = layerTotal;
+
+        for(let j = 0; j < accounts.length; j++){
+            let account = accounts[j];
+            let balance = await autoCoinage.balances(account);
+            if(j%10 == 0) console.log(j);
+            accountList.push(account.toLowerCase());
+            balanceList.push(balance.balance.toString());
+            refactoredCountList.push(balance.refactoredCount.toString());
+            remainList.push(balance.remain.toString())
+        }
+
+        // console.log('accountList length', accountList.length);
+        // console.log('balanceList length', balanceList.length);
+        // console.log('refactoredCountList length', refactoredCountList.length);
+        // console.log('remainList length', remainList.length);
+
+        out["accounts"] = accountList;
+        out["balances"] = balanceList;
+        out["refactoredCounts"] = refactoredCountList;
+        out["remains"] = remainList;
+   // }
+    }catch(error){
+      console.log('updateAutocoinageData error',error);
+    }
+    // console.log(out);
+
+    try{
+      if(out.accounts != null && out.accounts.length > 0 ){
+        let outNew = {};
+        const snapshots = JSON.parse(await fs.readFileSync("./data/coin-"+layer2Address+".json"));
+        let accountList = snapshots.accounts;
+        // console.log("snapshots.accounts : ", snapshots.accounts.length ) ;
+        // console.log("snapshots.balances : ", snapshots.balances.length ) ;
+        // console.log("snapshots.refactoredCounts : ", snapshots.refactoredCounts.length ) ;
+        // console.log("snapshots.remains : ", snapshots.remains.length) ;
+
+        // console.log("snapshots.layerFactor : ", snapshots.layerFactor ) ;
+        // console.log("snapshots.layerTotal : ", snapshots.layerTotal ) ;
+
+
+        for(let i = 0; i < out.accounts.length; i++){
+          let existAccout =  accountList.includes(out.accounts[i]);
+
+          console.log(i, "out.accounts[i]: ", out.accounts[i] ) ;
+          console.log(i, "out.balances[i]: ", out.balances[i] ) ;
+          console.log(i, "out.refactoredCounts[i]: ", out.refactoredCounts[i] ) ;
+          console.log(i, "out.remains[i]: ", out.remains[i] ) ;
+
+          if(!existAccout){
+            snapshots.accounts.push(out.accounts[i]);
+            snapshots.balances.push(out.balances[i]);
+            snapshots.refactoredCounts.push(out.refactoredCounts[i]);
+            snapshots.remains.push(out.remains[i]);
+          } else {
+            // 이미 있는 데이타이면 몇번째 인덱스에 있는지 확인
+            const findIndex = snapshots.accounts.indexOf(out.accounts[i]);
+            console.log( "findIndex ", findIndex ) ;
+            if(findIndex >= 0){
+              if(snapshots.accounts[findIndex] != out.accounts[i]){
+                console.log(out.accounts[i], findIndex, "error : not same account");
+
+              } else {
+                console.log(i, "original: "  ) ;
+                console.log(i, "out.balances[i]: ", out.balances[i] ) ;
+                console.log(i, "out.refactoredCounts[i]: ", out.refactoredCounts[i] ) ;
+                console.log(i, "out.remains[i]: ", out.remains[i] ) ;
+                console.log(i, "find: "  ) ;
+                console.log(i, "snapshots.accounts[findIndex]: ", snapshots.accounts[findIndex] ) ;
+                console.log(i, "snapshots.balances[findIndex]: ", snapshots.balances[findIndex] ) ;
+                console.log(i, "snapshots.refactoredCounts[findIndex]: ", snapshots.refactoredCounts[findIndex] ) ;
+                console.log(i, "snapshots.remains[findIndex]: ", snapshots.remains[findIndex] ) ;
+                snapshots.balances[findIndex] = out.balances[i];
+                snapshots.refactoredCounts[findIndex] = out.refactoredCounts[i];
+                snapshots.remains[findIndex] = out.remains[i];
+                console.log(out.accounts[i], findIndex, "changed ");
+                console.log(i, "snapshots.balances[i]: ", snapshots.balances[findIndex] ) ;
+                console.log(i, "snapshots.refactoredCounts[i]: ", snapshots.refactoredCounts[findIndex] ) ;
+                console.log(i, "snapshots.remains[i]: ", snapshots.remains[findIndex] ) ;
+                console.log( "=============================== ");
+              }
+            } else {
+              console.log(out.accounts[i], findIndex, "error : can't find account");
+            }
+          }
+        }
+
+        outNew.layerFactor = layerFactor;
+        outNew.layerTotal = layerTotal;
+
+        outNew.accounts = snapshots.accounts;
+        outNew.balances = snapshots.balances;
+        outNew.refactoredCounts = snapshots.refactoredCounts;
+        outNew.remains = snapshots.remains;
+
+        // console.log("outNew.accounts : ", outNew.accounts.length ) ;
+        // console.log("outNew.balances : ", outNew.balances.length ) ;
+        // console.log("outNew.refactoredCounts : ", outNew.refactoredCounts.length ) ;
+        // console.log("outNew.remains : ", outNew.remains.length  ) ;
+
+        // console.log("outNew.layerFactor : ", outNew.layerFactor ) ;
+        // console.log("outNew.layerTotal : ", outNew.layerTotal ) ;
+
+       // await fs.writeFileSync('./data/coin-'+layer2Address+'.json', JSON.stringify(outNew));
+
+      } else {
+        console.log(layer2Address , " : no accounts") ;
+      }
+
+    }catch(error){
+      console.log('getAutocoinageData save error',error);
+    }
+    console.log(i, 'update /data/coin-'+layer2Address+'.json');
+  }
+}
+
+
 const syncAutocoinageData = async (autoCoinageSnapshotAddress) => {
   const [admin] = await ethers.getSigners();
 
   const layer2sUnique = JSON.parse(await fs.readFileSync("./data/layer2s-uniq-new.json"));
 
-  const AutoCoinageSnapshotABI = require("../../abi/AutoCoinageSnapshot.json").abi;
+  const AutoCoinageSnapshotABI = require("../../abi/AutoCoinageSnapshot2.json").abi;
 
 
-  for(let i = 0; i < layer2sUnique.length; i++){
-  //for(let i = 0; i < 1; i++){
+  //for(let i = 0; i < layer2sUnique.length; i++){
+  for(let i = 5; i < layer2sUnique.length; i++){
     let layer2Address = layer2sUnique[i];
 
     const autoCoinageSnapshot = new ethers.Contract(
@@ -661,6 +836,7 @@ module.exports = {
     getTotalSupplyLayer2,
     getBalanceLayer2Account,
     syncAutocoinageData,
+    updateAutocoinageData,
     getTotalSupplyLayer2WithAutyoCoinageSnapshot,
     getBalanceLayer2AccountWithAutyoCoinageSnapshot,
     viewAutoCoinageSnapshotAddress
