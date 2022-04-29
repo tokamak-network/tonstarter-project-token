@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/utils/Arrays.sol";
@@ -10,8 +9,6 @@ contract AutoCoinageSnapshotStorage2 is AccessControl {
     using Arrays for uint256[];
     using Counters for Counters.Counter;
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
-    // bytes32 public constant UPDATE_ROLE = keccak256("UPDATE_ROLE");
-    // bytes32 public constant SNAPSHOT_ROLE = keccak256("SNAPSHOT_ROLE");
 
     struct Layer2Snapshots {
         address[] layer2s;
@@ -38,7 +35,7 @@ contract AutoCoinageSnapshotStorage2 is AccessControl {
     address public layer2Registry ;
 
     // layer2- account - balance
-    mapping(address => mapping (address => BalanceSnapshots)) internal accountBalanceSnapshots;
+    mapping(address => mapping(address => BalanceSnapshots)) internal accountBalanceSnapshots;
 
     // layer2- totalSupply
     mapping(address => BalanceSnapshots) internal totalSupplySnapshots;
@@ -51,11 +48,8 @@ contract AutoCoinageSnapshotStorage2 is AccessControl {
     // layer2 ->currentLayer2SnapshotId
     mapping(address => uint256)  public currentLayer2SnapshotId;
 
-    // layer2 ->currentAccountSnapshotId
-    //mapping(address => mapping (address => BalanceSnapshots))  public currentAccountSnapshotId;
-
     //layer2 -> snapshot -> blockNumber
-    mapping(address => mapping( uint256 => uint256))  internal blockNumberBySnapshotId;
+    mapping(address => mapping(uint256 => uint256))  internal blockNumberBySnapshotId;
 
     //snashotAggregatorId ->
     mapping(uint256 => Layer2Snapshots)  internal snashotAggregator;
@@ -72,7 +66,6 @@ contract AutoCoinageSnapshotStorage2 is AccessControl {
 
     uint256 internal _totalSupply;
 
-
     //---
     string public name;
     string public symbol;
@@ -82,8 +75,6 @@ contract AutoCoinageSnapshotStorage2 is AccessControl {
     //--
     address[] public layer2s;
     mapping(address => bool) public existLayer2s;
-    address[] public uniqAccounts;
-    mapping(address => bool) public existAccounts;
 
     // layer2 - accounts
     mapping(address => address[]) public needSyncs;
