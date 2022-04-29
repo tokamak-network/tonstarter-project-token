@@ -610,8 +610,8 @@ const syncAutocoinageData = async (autoCoinageSnapshotAddress) => {
   const AutoCoinageSnapshotABI = require("../../abi/AutoCoinageSnapshot2.json").abi;
 
 
-  //for(let i = 0; i < layer2sUnique.length; i++){
-  for(let i = 5; i < layer2sUnique.length; i++){
+  for(let i = 0; i < layer2sUnique.length; i++){
+  //for(let i = 5; i < layer2sUnique.length; i++){
     let layer2Address = layer2sUnique[i];
 
     const autoCoinageSnapshot = new ethers.Contract(

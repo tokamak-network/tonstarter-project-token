@@ -170,7 +170,7 @@ interface IAutoCoinageSnapshot2 {
                 uint256 amount
         );
 
-
+    /*
     /// @notice Returns information staked in the current tokamak of layer2 and information stored in the current snapshot.
     /// @param layer2 a layer2 address
     /// @param account account
@@ -179,9 +179,7 @@ interface IAutoCoinageSnapshot2 {
     /// @return snapShotRefactoredCount RefactoredCounts in Snapshot
     /// @return snapShotRemain Remain in Snapshot
     /// @return currentBalanceOf a current balanceOf in tokamak
-    /// @return curBalances a current Balances in tokamak
-    /// @return curRefactoredCounts a current RefactoredCounts in tokamak
-    /// @return curRemains a current Remains in tokamak
+    /// @return AutoRefactorCoinageI.Balance balances of layer's account in tokamak
     function currentAccountBalanceSnapshots(address layer2, address account) external view
         returns (
                 bool snapshotted,
@@ -189,9 +187,7 @@ interface IAutoCoinageSnapshot2 {
                 uint256 snapShotRefactoredCount,
                 uint256 snapShotRemain,
                 uint256 currentBalanceOf,
-                uint256 curBalances,
-                uint256 curRefactoredCounts,
-                uint256 curRemains
+                AutoRefactorCoinageI.Balance balances
         );
 
 
@@ -202,9 +198,7 @@ interface IAutoCoinageSnapshot2 {
     /// @return snapShotRefactoredCount RefactoredCounts in Snapshot
     /// @return snapShotRemain Remain in Snapshot
     /// @return currentTotalSupply a current total staked amount in tokamak
-    /// @return curBalances a current Balances in tokamak
-    /// @return curRefactoredCounts a current RefactoredCounts in tokamak
-    /// @return curRemains a current Remains in tokamak
+    /// @return AutoRefactorCoinageI.Balance _totalSupply() of layer2 in tokamak
     function currentTotalSupplySnapshots(address layer2) external view
         returns (
                 bool snapshotted,
@@ -212,10 +206,9 @@ interface IAutoCoinageSnapshot2 {
                 uint256 snapShotRefactoredCount,
                 uint256 snapShotRemain,
                 uint256 currentTotalSupply,
-                uint256 curBalances,
-                uint256 curRefactoredCounts,
-                uint256 curRemains
+                AutoRefactorCoinageI.Balance _total
         );
+    */
 
     /// @notice Returns factor in the current tokamak of layer2 and factor stored in the current snapshot.
     /// @param layer2 a layer2 address

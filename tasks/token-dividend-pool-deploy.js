@@ -71,10 +71,11 @@ task("deploy-autocoinage-snapshot", "")
       const [admin] = await ethers.getSigners();
       console.log('deploy-autocoinage-snapshot2' , admin.address);
 
-    // await hre.ethers.provider.send("hardhat_setBalance", [
-    //   admin.address,
-    //   "0x56BC75E2D63100000",
-    // ]);
+    await hre.ethers.provider.send("hardhat_setBalance", [
+      admin.address,
+      "0x56BC75E2D63100000",
+    ]);
+
         try{
             const AutoCoinageSnapshot = await ethers.getContractFactory("AutoCoinageSnapshot2");
             let autoCoinageSnapshot = await AutoCoinageSnapshot.connect(admin).deploy();
@@ -230,6 +231,19 @@ task("deploy-power-ton-swapper", "")
         await powerTONSwapperProxy.deployed();
 
         console.log("powerTONSwapperProxy Deployed:", powerTONSwapperProxy.address);
+
+        // ---------------
+        const AutoCoinageSnapshotProxyABI = JSON.parse(await fs.readFileSync("./abi/AutoCoinageSnapshotProxy2.json")).abi;
+        const autoCoinageSnapshotProxy = new ethers.Contract(
+            autocoinageSnapshotAddress,
+            AutoCoinageSnapshotProxyABI,
+            ethers.provider
+        );
+        let ADMIN_ROLE = keccak256("ADMIN_ROLE");
+        let tx = await autoCoinageSnapshotProxy.connect(admin).grantRole(ADMIN_ROLE, powerTONSwapperProxy.address);
+
+        console.log('autoCoinageSnapshotProxy grantRole ADMIN_ROLE ', tx.hash);
+        // ---------------
 
         await run("verify", {
             address: powerTONSwapperImpl.address,

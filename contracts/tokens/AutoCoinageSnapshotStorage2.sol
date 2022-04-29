@@ -15,11 +15,16 @@ contract AutoCoinageSnapshotStorage2 is AccessControl {
         uint256[] snapshotIds;
     }
 
+    // struct BalanceSnapshots {
+    //     uint256[] ids;
+    //     uint256[] balances;
+    //     uint256[] refactoredCounts;
+    //     uint256[] remains;
+    // }
+
     struct BalanceSnapshots {
         uint256[] ids;
         uint256[] balances;
-        uint256[] refactoredCounts;
-        uint256[] remains;
     }
 
     struct FactorSnapshots {
@@ -36,10 +41,17 @@ contract AutoCoinageSnapshotStorage2 is AccessControl {
 
     // layer2- account - balance
     mapping(address => mapping(address => BalanceSnapshots)) internal accountBalanceSnapshots;
+    // layer2- account - snapahot - RefactoredCounts
+    mapping(address => mapping(address => mapping(uint256 => uint256))) internal accountRefactoredCounts;
+    // layer2- account - snapahot - Remains
+    mapping(address => mapping(address => mapping(uint256 => uint256))) internal accountRemains;
 
     // layer2- totalSupply
     mapping(address => BalanceSnapshots) internal totalSupplySnapshots;
-
+    // layer2- totalSupply - snapahot - RefactoredCounts
+    mapping(address => mapping(uint256 => uint256)) internal totalSupplyRefactoredCounts;
+    // layer2- totalSupply - snapahot - Remains
+    mapping(address => mapping(uint256 => uint256)) internal totalSupplyRemains;
 
     //layer2- factor
     mapping(address => FactorSnapshots) internal factorSnapshots;
