@@ -10,8 +10,8 @@ contract AutoCoinageSnapshotStorage2 is AccessControl {
     using Arrays for uint256[];
     using Counters for Counters.Counter;
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
-    bytes32 public constant UPDATE_ROLE = keccak256("UPDATE_ROLE");
-    bytes32 public constant SNAPSHOT_ROLE = keccak256("SNAPSHOT_ROLE");
+    // bytes32 public constant UPDATE_ROLE = keccak256("UPDATE_ROLE");
+    // bytes32 public constant SNAPSHOT_ROLE = keccak256("SNAPSHOT_ROLE");
 
     struct Layer2Snapshots {
         address[] layer2s;

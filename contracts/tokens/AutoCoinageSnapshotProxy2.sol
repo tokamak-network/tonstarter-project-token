@@ -24,8 +24,6 @@ contract AutoCoinageSnapshotProxy2 is
 
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _setupRole(ADMIN_ROLE, msg.sender);
-        _setupRole(UPDATE_ROLE, msg.sender);
-        _setupRole(SNAPSHOT_ROLE, msg.sender);
         snashotAggregatorTotal = 0;
         // _registerInterface(ERC20_RECEIVED);
 
@@ -45,8 +43,6 @@ contract AutoCoinageSnapshotProxy2 is
     {
         _setupRole(DEFAULT_ADMIN_ROLE, _owner);
         _setupRole(ADMIN_ROLE, _owner);
-        _setupRole(UPDATE_ROLE, _owner);
-        _setupRole(SNAPSHOT_ROLE, _owner);
     }
 
     /// @notice Set pause state

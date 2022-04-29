@@ -8,39 +8,41 @@ import "../powerton/AutoRefactorCoinageI.sol";
 import "../powerton/SeigManagerI.sol";
 import "../powerton/Layer2RegistryI.sol";
 
-// import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-
+import "../interfaces/IAutoCoinageSnapshot2.sol";
 import "./AutoCoinageSnapshotStorage2.sol";
 // import "hardhat/console.sol";
 
 import { DSMath } from "../libraries/DSMath.sol";
 
-contract AutoCoinageSnapshot2 is AutoCoinageSnapshotStorage2, DSMath {
+contract AutoCoinageSnapshot2 is AutoCoinageSnapshotStorage2, DSMath, IAutoCoinageSnapshot2 {
     using SArrays for uint256[];
     using Counters for Counters.Counter;
-
-    event onSnapshot(address indexed layer2, uint256 id);
-    event onSyncLayer2(address indexed layer2, uint256 id);
-    event onSyncLayer2Address(address indexed layer2, address account, uint256 id);
-    event onSyncLayer2Batch(address indexed layer2, uint256 id);
 
     constructor() {
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _setupRole(ADMIN_ROLE, msg.sender);
-        _setupRole(UPDATE_ROLE, msg.sender);
-        _setupRole(SNAPSHOT_ROLE, msg.sender);
     }
 
-    function setAddress(address _seigManager, address _layer2Registry) external onlyRole(ADMIN_ROLE) {
+    function setAddress(address _seigManager, address _layer2Registry) external onlyRole(ADMIN_ROLE) override {
         require(_seigManager != address(0) && _layer2Registry != address(0) , "zero address");
         seigManager = _seigManager;
         layer2Registry = _layer2Registry;
     }
 
-    function setNameSymbolDecimals(string memory name_, string memory symbol_, uint256 decimals_) external onlyRole(ADMIN_ROLE) {
+    function setNameSymbolDecimals(string memory name_, string memory symbol_, uint256 decimals_) external onlyRole(ADMIN_ROLE) override {
         name = name_;
         symbol = symbol_;
         decimals = decimals_;
+    }
+
+    function addLayer2s(address[] memory _layers) external onlyRole(ADMIN_ROLE) override {
+
+        for(uint256 i = 0; i < _layers.length; i++){
+            if(!existLayer2s[_layers[i]]) {
+                existLayer2s[_layers[i]] = true;
+                layer2s.push(_layers[i]);
+            }
+        }
     }
 
     function _factorAt(address layer2, uint256 snapshotId) internal view virtual returns (bool, uint256, uint256) {
@@ -105,7 +107,7 @@ contract AutoCoinageSnapshot2 is AutoCoinageSnapshotStorage2, DSMath {
         //return snapshotted ? value : totalSupply();
     }
 
-    function applyFactor(uint256 v, uint256 refactoredCount, uint256 _factor, uint256 refactorCount) public view returns (uint256)
+    function applyFactor(uint256 v, uint256 refactoredCount, uint256 _factor, uint256 refactorCount) public view override returns (uint256)
     {
         if (v == 0) {
             return 0;
@@ -120,17 +122,15 @@ contract AutoCoinageSnapshot2 is AutoCoinageSnapshotStorage2, DSMath {
         return v;
     }
 
-
     function _snapshot(address layer2) internal virtual returns (uint256) {
         currentLayer2SnapshotId[layer2]++;
         blockNumberBySnapshotId[layer2][currentLayer2SnapshotId[layer2]] = block.number;
 
         uint256 currentId = getCurrentLayer2SnapshotId(layer2);
-        emit onSnapshot(layer2, currentId);
+        emit SnapshotLayer2(layer2, currentId);
         return currentId;
 
     }
-
 
     function _lastSnapshotId(uint256[] storage ids) internal view returns (uint256) {
         if (ids.length == 0) {
@@ -209,17 +209,8 @@ contract AutoCoinageSnapshot2 is AutoCoinageSnapshotStorage2, DSMath {
         );
     }
 
-    function addLayer2s(address[] memory _layers) external onlyRole(ADMIN_ROLE) returns (uint256) {
 
-        for(uint256 i = 0; i < _layers.length; i++){
-            if(!existLayer2s[_layers[i]]) {
-                existLayer2s[_layers[i]] = true;
-                layer2s.push(_layers[i]);
-            }
-        }
-    }
-
-    function addSync(address layer2, address account) public returns (uint256) {
+    function addSync(address layer2, address account) public override returns (uint256) {
 
         if(!existLayer2s[layer2]) {
             existLayer2s[layer2] = true;
@@ -231,15 +222,13 @@ contract AutoCoinageSnapshot2 is AutoCoinageSnapshotStorage2, DSMath {
             if(accounts[i] == account) return needSyncs[layer2].length;
         }
         needSyncs[layer2].push(account);
+
+        emit AddSync(layer2, account);
         return needSyncs[layer2].length;
     }
 
-    function layerSnapshotIds(uint256 snashotAggregatorId) public returns (address[] memory, uint256[] memory) {
-        Layer2Snapshots memory snapshot_ = snashotAggregator[snashotAggregatorId];
-        return (snapshot_.layer2s, snapshot_.snapshotIds);
-    }
 
-    function snapshot() public returns (uint256) {
+    function snapshot() public override returns (uint256) {
         snashotAggregatorTotal++;
 
         for(uint256 j = 0; j < layer2s.length;  j++){
@@ -252,32 +241,16 @@ contract AutoCoinageSnapshot2 is AutoCoinageSnapshotStorage2, DSMath {
 
             if(needSyncs[layer2].length > 0) delete needSyncs[layer2];
         }
+
+        emit Snapshot(snashotAggregatorTotal);
         return snashotAggregatorTotal;
     }
 
-    /*
-    function snapshot() public returns (uint256) {
-        snashotAggregatorTotal++;
-
-        uint256 numberOfLayer2s = Layer2RegistryI(layer2Registry).numLayer2s();
-
-        for (uint256 i = 0; i < numberOfLayer2s; i++) {
-            address layer2 = Layer2RegistryI(layer2Registry).layer2ByIndex(i);
-            if(SeigManagerI(seigManager).coinages(layer2) != address(0)){
-
-                Layer2Snapshots storage snapshot_ = snashotAggregator[snashotAggregatorTotal];
-                snapshot_.layer2s.push(layer2);
-                snapshot_.snapshotIds.push(getCurrentLayer2SnapshotId(layer2));
-            }
-        }
-        return snashotAggregatorTotal;
-    }
-    */
-    function snapshot(address layer2) public onlyRole(SNAPSHOT_ROLE) returns (uint256) {
+    function snapshot(address layer2) public override returns (uint256) {
         return _snapshot(layer2);
     }
 
-    function sync(address layer2) public returns (uint256){
+    function sync(address layer2) public override returns (uint256){
 
         address coinage  = SeigManagerI(seigManager).coinages(layer2);
         require(coinage != address(0), "zero coinages");
@@ -299,11 +272,11 @@ contract AutoCoinageSnapshot2 is AutoCoinageSnapshotStorage2, DSMath {
         updateLayer2TotalSupply(layer2, tbalances, trefactoredCounts, tremains);
         updateLayer2Factor(layer2, _factor, refactorCount);
 
-        emit onSyncLayer2(layer2, snapshotId);
+        emit SyncLayer2(layer2, snapshotId);
         return snapshotId;
     }
 
-    function sync(address layer2, address account) public returns (uint256) {
+    function sync(address layer2, address account) public override returns (uint256) {
 
         address coinage  = SeigManagerI(seigManager).coinages(layer2);
         require(coinage != address(0), "zero coinages");
@@ -338,7 +311,7 @@ contract AutoCoinageSnapshot2 is AutoCoinageSnapshotStorage2, DSMath {
             uniqAccounts.push(account_);
         }
 
-        emit onSyncLayer2Address(layer2_, account_, snapshotId);
+        emit SyncLayer2Address(layer2_, account_, snapshotId);
         return snapshotId;
     }
 
@@ -346,7 +319,7 @@ contract AutoCoinageSnapshot2 is AutoCoinageSnapshotStorage2, DSMath {
         address layer2,
         address[] memory accounts
         )
-        public returns (uint256)
+        public override returns (uint256)
     {
         address coinage  = SeigManagerI(seigManager).coinages(layer2);
         require(coinage != address(0), "zero coinages");
@@ -355,7 +328,6 @@ contract AutoCoinageSnapshot2 is AutoCoinageSnapshotStorage2, DSMath {
         uint256 snapshotId = _snapshot(layer2);
 
         for (uint256 i = 0; i < accounts.length; ++i) {
-            //console.log('syncBatch ',layer2, accounts[i]);
             AutoRefactorCoinageI.Balance memory accountBalance  = AutoRefactorCoinageI(coinage).balances(accounts[i]);
             updateLayer2Account(layer2, accounts[i], accountBalance.balance, accountBalance.refactoredCount, accountBalance.remain);
 
@@ -380,7 +352,7 @@ contract AutoCoinageSnapshot2 is AutoCoinageSnapshotStorage2, DSMath {
         updateLayer2TotalSupply(layer2, tbalances, trefactoredCounts, tremains);
         updateLayer2Factor(layer2, _factor, refactorCount);
 
-        emit onSyncLayer2Batch(layer2, snapshotId);
+        emit SyncLayer2Batch(layer2, snapshotId);
         return snapshotId;
     }
 
@@ -393,7 +365,7 @@ contract AutoCoinageSnapshot2 is AutoCoinageSnapshotStorage2, DSMath {
         uint256[3] memory layerTotal,
         uint256[2] memory layerFactor
         )
-        external onlyRole(UPDATE_ROLE)  returns (bool)
+        external onlyRole(ADMIN_ROLE) override returns (bool)
     {
         require(accounts.length == balances.length, "No balances same length");
         require(accounts.length == refactoredCounts.length, "No refactoredCounts same length");
@@ -420,8 +392,13 @@ contract AutoCoinageSnapshot2 is AutoCoinageSnapshotStorage2, DSMath {
         return true;
     }
 
+    function layerSnapshotIds(uint256 snashotAggregatorId) public view override returns (address[] memory, uint256[] memory) {
+        Layer2Snapshots memory snapshot_ = snashotAggregator[snashotAggregatorId];
+        return (snapshot_.layer2s, snapshot_.snapshotIds);
+    }
 
-    function getLayer2TotalSupplyInTokamak(address layer2) public view
+
+    function getLayer2TotalSupplyInTokamak(address layer2) public view override
         returns (
                 uint256 totalSupplyLayer2,
                 uint256 balance,
@@ -440,7 +417,7 @@ contract AutoCoinageSnapshot2 is AutoCoinageSnapshotStorage2, DSMath {
         remain = totalBalance.remain;
     }
 
-    function getLayer2BalanceOfInTokamak(address layer2, address user) public view
+    function getLayer2BalanceOfInTokamak(address layer2, address user) public view override
         returns (
                 uint256 balanceOfLayer2Amount,
                 uint256 balance,
@@ -453,7 +430,6 @@ contract AutoCoinageSnapshot2 is AutoCoinageSnapshotStorage2, DSMath {
 
         balanceOfLayer2Amount = AutoRefactorCoinageI(coinage).balanceOf(user);
 
-
         AutoRefactorCoinageI.Balance memory totalBalance  = AutoRefactorCoinageI(coinage).balances(user);
 
 
@@ -462,7 +438,7 @@ contract AutoCoinageSnapshot2 is AutoCoinageSnapshotStorage2, DSMath {
         remain = totalBalance.remain;
     }
 
-    function getBalanceOfInTokamak(address account) public view
+    function getBalanceOfInTokamak(address account) public view override
         returns (
                 uint256 accountAmount
         )
@@ -478,7 +454,7 @@ contract AutoCoinageSnapshot2 is AutoCoinageSnapshotStorage2, DSMath {
         }
     }
 
-    function getTotalStakedInTokamak() public view
+    function getTotalStakedInTokamak() public view override
         returns (
                 uint256 accountAmount
         )
@@ -495,7 +471,7 @@ contract AutoCoinageSnapshot2 is AutoCoinageSnapshotStorage2, DSMath {
     }
 
 
-    function currentAccountBalanceSnapshots(address layer2, address account) public view
+    function currentAccountBalanceSnapshots(address layer2, address account) public view override
         returns (
                 bool snapshotted,
                 uint256 snapShotBalance,
@@ -523,7 +499,7 @@ contract AutoCoinageSnapshot2 is AutoCoinageSnapshotStorage2, DSMath {
         (snapshotted, snapShotBalance, snapShotRefactoredCount, snapShotRemain) = _valueAt(layer2, currentId, snapshots);
     }
 
-    function currentTotalSupplySnapshots(address layer2) public view
+    function currentTotalSupplySnapshots(address layer2) public view override
         returns (
                 bool snapshotted,
                 uint256 snapShotBalance,
@@ -549,7 +525,7 @@ contract AutoCoinageSnapshot2 is AutoCoinageSnapshotStorage2, DSMath {
         (snapshotted, snapShotBalance, snapShotRefactoredCount, snapShotRemain) = _valueAt(layer2, currentId, snapshots);
     }
 
-    function currentFactorSnapshots(address layer2) public view
+    function currentFactorSnapshots(address layer2) public view override
         returns (
                 bool snapshotted,
                 uint256 snapShotFactor,
@@ -573,74 +549,51 @@ contract AutoCoinageSnapshot2 is AutoCoinageSnapshotStorage2, DSMath {
 
     }
 
-    function getCurrentLayer2SnapshotId(address layer2) public view returns (uint256) {
+    function getCurrentLayer2SnapshotId(address layer2) public view override returns (uint256) {
         return currentLayer2SnapshotId[layer2];
     }
 
-    function balanceOf(address account) public view  returns (uint256)
+    function balanceOf(address account) public view override returns (uint256)
     {
         uint256 numberOfLayer2s = Layer2RegistryI(layer2Registry).numLayer2s();
         uint256 accountAmount = 0;
-        // console.log("balanceOf  layer2Registry %s", layer2Registry);
-        // console.log("balanceOf  numberOfLayer2s %s", numberOfLayer2s);
 
         for (uint256 i = 0; i < numberOfLayer2s; i++) {
             address layer2 = Layer2RegistryI(layer2Registry).layer2ByIndex(i);
-            //console.log("layer2 %s", layer2);
-            /*
-            address coinage  = SeigManagerI(seigManager).coinages(layer2);
-            console.log("coinage %s", coinage);
-            if(coinage != address(0)){
-                accountAmount += balanceOf(layer2, account);
-            }
-            */
             accountAmount += SeigManagerI(seigManager).stakeOf(layer2, account);
         }
-        //console.log("balanceOf(account) %s", accountAmount);
         return accountAmount;
     }
 
-    function totalSupply() public view returns (uint256)
+    function totalSupply() public view override returns (uint256)
     {
         uint256 numberOfLayer2s = Layer2RegistryI(layer2Registry).numLayer2s();
         uint256 totalAmount = 0;
         for (uint256 i = 0; i < numberOfLayer2s; i++) {
             address layer2 = Layer2RegistryI(layer2Registry).layer2ByIndex(i);
-            //address coinage  = SeigManagerI(seigManager).coinages(layer2);
-            //if(coinage != address(0)){
-                totalAmount += totalSupply(layer2);
-            //}
+            totalAmount += totalSupply(layer2);
         }
         return totalAmount;
     }
 
 
     function balanceOf(address layer2, address account)
-        public view returns (uint256)
+        public view override returns (uint256)
     {
         return balanceOfAt(layer2, account, getCurrentLayer2SnapshotId(layer2));
     }
 
 
     function balanceOfAt(address layer2, address account, uint256 snapshotId)
-        public view returns (uint256)
+        public view override returns (uint256)
     {
-        // console.log('balanceOfAt ===layer2 : %s %s %s ',layer2, account, snapshotId);
         if(snapshotId > 0){
             (bool snapshotted1, uint256 balances, uint256 refactoredCounts, uint256 remains) = _balanceOfAt(layer2, account, snapshotId);
             (bool snapshotted2, uint256 factors, uint256 refactorCounts) = _factorAt(layer2, snapshotId);
 
-            // console.log('snapshotId %s', snapshotId);
-            // console.log('snapshotted1 %s', snapshotted1);
-            // console.log('balances %s', balances);
-            // console.log('refactoredCounts %s', refactoredCounts);
-            // console.log('remains %s', remains);
-            // console.log('balanceOfAt end =================');
             if(snapshotted1 &&  snapshotted2) {
                 uint256 bal = applyFactor(balances, refactoredCounts, factors, refactorCounts);
                 bal += remains;
-
-                // console.log('balanceOfAt : %s %s ',snapshotId, bal);
                 return bal;
             } else {
                 return 0;
@@ -651,7 +604,7 @@ contract AutoCoinageSnapshot2 is AutoCoinageSnapshotStorage2, DSMath {
     }
 
     function balanceOfAt(address account, uint256 snashotAggregatorId)
-        public view returns (uint256 accountStaked)
+        public view override returns (uint256 accountStaked)
     {
         accountStaked = 0;
         if(snashotAggregatorId <= snashotAggregatorTotal){
@@ -666,7 +619,7 @@ contract AutoCoinageSnapshot2 is AutoCoinageSnapshotStorage2, DSMath {
 
 
     function stakedAmountWithSnashotAggregator(address account, uint256 snashotAggregatorId)
-        public view returns (uint256 accountStaked, uint256 totalStaked)
+        public view override returns (uint256 accountStaked, uint256 totalStaked)
     {
         accountStaked = 0;
         totalStaked = 0;
@@ -681,13 +634,13 @@ contract AutoCoinageSnapshot2 is AutoCoinageSnapshotStorage2, DSMath {
     }
 
     function totalSupply(address layer2)
-        public view returns (uint256)
+        public view override returns (uint256)
     {
         return totalSupplyAt(layer2, getCurrentLayer2SnapshotId(layer2));
     }
 
     function totalSupplyAt(uint256 snashotAggregatorId)
-        public view returns (uint256 totalStaked)
+        public view override returns (uint256 totalStaked)
     {
         totalStaked = 0;
         if(snashotAggregatorId <= snashotAggregatorTotal){
@@ -700,7 +653,7 @@ contract AutoCoinageSnapshot2 is AutoCoinageSnapshotStorage2, DSMath {
     }
 
     function totalSupplyAt(address layer2, uint256 snapshotId)
-        public view returns (uint256)
+        public view override returns (uint256)
     {
         if(snapshotId > 0){
             (bool snapshotted1, uint256 balances, uint256 refactoredCounts, uint256 remains) = _totalSupplyAt(layer2, snapshotId);
@@ -714,12 +667,14 @@ contract AutoCoinageSnapshot2 is AutoCoinageSnapshotStorage2, DSMath {
                 return 0;
             }
         } else {
+            address coinage  = SeigManagerI(seigManager).coinages(layer2);
+            if(coinage != address(0)) return AutoRefactorCoinageI(coinage).totalSupply();
             return 0;
         }
 
     }
 
-    function lastSnapShotIndex(address layer2) public view
+    function lastSnapShotIndex(address layer2) public view override
         returns (uint256)
     {
         if(totalSupplySnapshots[layer2].ids.length == 0) return 0;
@@ -727,7 +682,7 @@ contract AutoCoinageSnapshot2 is AutoCoinageSnapshotStorage2, DSMath {
     }
 
 
-    function getAccountBalanceSnapsByIds(uint256 id, address layer2, address account) public view
+    function getAccountBalanceSnapsByIds(uint256 id, address layer2, address account) public view override
         returns (uint256, uint256, uint256, uint256)
     {
         BalanceSnapshots memory snapshot_ =  accountBalanceSnapshots[layer2][account];
@@ -737,7 +692,7 @@ contract AutoCoinageSnapshot2 is AutoCoinageSnapshotStorage2, DSMath {
         return (snapshot_.ids[id], snapshot_.balances[id], snapshot_.refactoredCounts[id], snapshot_.remains[id]);
     }
 
-    function getAccountBalanceSnapsBySnapshotId(uint256 snapshotId, address layer2, address account) public view
+    function getAccountBalanceSnapsBySnapshotId(uint256 snapshotId, address layer2, address account) public view override
         returns (uint256, uint256, uint256, uint256)
     {
         BalanceSnapshots storage snapshot_ =  accountBalanceSnapshots[layer2][account];
@@ -746,7 +701,6 @@ contract AutoCoinageSnapshot2 is AutoCoinageSnapshotStorage2, DSMath {
 
         if(snapshotId > 0 && snapshotId <= getCurrentLayer2SnapshotId(layer2)) {
             uint256 id = snapshot_.ids.findIndex(snapshotId);
-            // console.log('getAccountBalanceSnapsBySnapshotId findIndex %s', id);
             return (snapshot_.ids[id], snapshot_.balances[id], snapshot_.refactoredCounts[id], snapshot_.remains[id]);
         } else {
             return (0,0,0,0);
