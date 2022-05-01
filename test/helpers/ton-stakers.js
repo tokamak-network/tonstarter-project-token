@@ -272,7 +272,7 @@ const getStakersListOfLayers = async (depositManagerAddress, startBlockNumber, e
       };
 
       const txs = await ethers.provider.getLogs(filter);
-      console.log("length: ", txs.length);
+      console.log(i, "length: ",  txs.length);
 
       for (const tx of txs) {
         const { transactionHash } = tx;
@@ -471,7 +471,7 @@ const updateAutocoinageData = async (seigManagerAddress) => {
         let factor = await autoCoinage._factor();
         let refactorCount = await autoCoinage.refactorCount();
 
-        console.log('factor', factor, refactorCount);
+        //console.log('factor', factor, refactorCount);
         layerFactor.push(factor.toString());
         layerFactor.push(refactorCount.toString());
         console.log('layerFactor', layerFactor);
@@ -479,7 +479,8 @@ const updateAutocoinageData = async (seigManagerAddress) => {
         out["layerFactor"] = layerFactor;
 
         let total = await autoCoinage._totalSupply();
-        console.log('total', total);
+        //console.log('total', total);
+
         layerTotal.push(total.balance.toString());
         layerTotal.push(total.refactoredCount.toString());
         layerTotal.push(total.remain.toString());
@@ -491,6 +492,7 @@ const updateAutocoinageData = async (seigManagerAddress) => {
             let account = accounts[j];
             let balance = await autoCoinage.balances(account);
             if(j%10 == 0) console.log(j);
+
             accountList.push(account.toLowerCase());
             balanceList.push(balance.balance.toString());
             refactoredCountList.push(balance.refactoredCount.toString());
@@ -529,42 +531,46 @@ const updateAutocoinageData = async (seigManagerAddress) => {
         for(let i = 0; i < out.accounts.length; i++){
           let existAccout =  accountList.includes(out.accounts[i]);
 
-          console.log(i, "out.accounts[i]: ", out.accounts[i] ) ;
-          console.log(i, "out.balances[i]: ", out.balances[i] ) ;
-          console.log(i, "out.refactoredCounts[i]: ", out.refactoredCounts[i] ) ;
-          console.log(i, "out.remains[i]: ", out.remains[i] ) ;
+          // console.log(i, "out.accounts[i]: ", out.accounts[i] ) ;
+          // console.log(i, "out.balances[i]: ", out.balances[i] ) ;
+          // console.log(i, "out.refactoredCounts[i]: ", out.refactoredCounts[i] ) ;
+          // console.log(i, "out.remains[i]: ", out.remains[i] ) ;
 
           if(!existAccout){
             snapshots.accounts.push(out.accounts[i]);
             snapshots.balances.push(out.balances[i]);
             snapshots.refactoredCounts.push(out.refactoredCounts[i]);
             snapshots.remains.push(out.remains[i]);
+
+            console.log(i, "!existAccout ", out.accounts[i], "push");
           } else {
             // 이미 있는 데이타이면 몇번째 인덱스에 있는지 확인
             const findIndex = snapshots.accounts.indexOf(out.accounts[i]);
-            console.log( "findIndex ", findIndex ) ;
+            //console.log( "findIndex ", findIndex ) ;
             if(findIndex >= 0){
               if(snapshots.accounts[findIndex] != out.accounts[i]){
                 console.log(out.accounts[i], findIndex, "error : not same account");
 
               } else {
-                console.log(i, "original: "  ) ;
-                console.log(i, "out.balances[i]: ", out.balances[i] ) ;
-                console.log(i, "out.refactoredCounts[i]: ", out.refactoredCounts[i] ) ;
-                console.log(i, "out.remains[i]: ", out.remains[i] ) ;
-                console.log(i, "find: "  ) ;
-                console.log(i, "snapshots.accounts[findIndex]: ", snapshots.accounts[findIndex] ) ;
-                console.log(i, "snapshots.balances[findIndex]: ", snapshots.balances[findIndex] ) ;
-                console.log(i, "snapshots.refactoredCounts[findIndex]: ", snapshots.refactoredCounts[findIndex] ) ;
-                console.log(i, "snapshots.remains[findIndex]: ", snapshots.remains[findIndex] ) ;
+                // console.log(i, "original: "  ) ;
+                // console.log(i, "out.balances[i]: ", out.balances[i] ) ;
+                // console.log(i, "out.refactoredCounts[i]: ", out.refactoredCounts[i] ) ;
+                // console.log(i, "out.remains[i]: ", out.remains[i] ) ;
+                // console.log(i, "find: "  ) ;
+                // console.log(i, "snapshots.accounts[findIndex]: ", snapshots.accounts[findIndex] ) ;
+                // console.log(i, "snapshots.balances[findIndex]: ", snapshots.balances[findIndex] ) ;
+                // console.log(i, "snapshots.refactoredCounts[findIndex]: ", snapshots.refactoredCounts[findIndex] ) ;
+                // console.log(i, "snapshots.remains[findIndex]: ", snapshots.remains[findIndex] ) ;
+
                 snapshots.balances[findIndex] = out.balances[i];
                 snapshots.refactoredCounts[findIndex] = out.refactoredCounts[i];
                 snapshots.remains[findIndex] = out.remains[i];
+
                 console.log(out.accounts[i], findIndex, "changed ");
-                console.log(i, "snapshots.balances[i]: ", snapshots.balances[findIndex] ) ;
-                console.log(i, "snapshots.refactoredCounts[i]: ", snapshots.refactoredCounts[findIndex] ) ;
-                console.log(i, "snapshots.remains[i]: ", snapshots.remains[findIndex] ) ;
-                console.log( "=============================== ");
+                // console.log(i, "snapshots.balances[i]: ", snapshots.balances[findIndex] ) ;
+                // console.log(i, "snapshots.refactoredCounts[i]: ", snapshots.refactoredCounts[findIndex] ) ;
+                // console.log(i, "snapshots.remains[i]: ", snapshots.remains[findIndex] ) ;
+                // console.log( "=============================== ");
               }
             } else {
               console.log(out.accounts[i], findIndex, "error : can't find account");
@@ -588,7 +594,7 @@ const updateAutocoinageData = async (seigManagerAddress) => {
         // console.log("outNew.layerFactor : ", outNew.layerFactor ) ;
         // console.log("outNew.layerTotal : ", outNew.layerTotal ) ;
 
-       // await fs.writeFileSync('./data/coin-'+layer2Address+'.json', JSON.stringify(outNew));
+        await fs.writeFileSync('./data/coin-'+layer2Address+'.json', JSON.stringify(outNew));
 
       } else {
         console.log(layer2Address , " : no accounts") ;
@@ -598,6 +604,7 @@ const updateAutocoinageData = async (seigManagerAddress) => {
       console.log('getAutocoinageData save error',error);
     }
     console.log(i, 'update /data/coin-'+layer2Address+'.json');
+    console.log( "=============================== ");
   }
 }
 
