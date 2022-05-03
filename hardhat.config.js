@@ -6,6 +6,9 @@ require("hardhat-gas-reporter");
 require("dotenv/config");
 
 require("dotenv").config();
+require("./tasks/token-dividend-pool-deploy");
+require("./tasks/ton-stakers-info");
+require("./tasks/dao-agendas");
 
 module.exports = {
   defaultNetwork: "hardhat",
@@ -14,9 +17,9 @@ module.exports = {
       chainId: 31337
     },
     local: {
+      chainId: 31337,
       url: `http://127.0.0.1:8545/`,
-      accounts: [`${process.env.PRIVATE_KEY}`,`${process.env.PRIVATE_KEY_2}`,`${process.env.PRIVATE_KEY_3}`,],
-      timeout: 100000000,
+      accounts: [`${process.env.PRIVATE_KEY}`,`${process.env.PRIVATE_KEY_2}`],
     },
     rinkeby: {
       url: `https://rinkeby.infura.io/v3/${process.env.INFURA_API_KEY}`,
@@ -28,6 +31,9 @@ module.exports = {
       gasMultiplier: 1.25,
       gasPrice: 95000000000,
     },
+  },
+  localhost: {
+    timeout: 100000000,
   },
   etherscan: {
     apiKey: process.env.ETHERSCAN_API_KEY,
@@ -48,6 +54,6 @@ module.exports = {
     artifacts: "./artifacts",
   },
   mocha: {
-    timeout: 10000000,
+    timeout: 100000000,
   },
 };
