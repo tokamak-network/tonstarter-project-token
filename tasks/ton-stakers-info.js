@@ -8,6 +8,7 @@ const {
   erc20RecorderMint,
   concatStakers,
   getStakersListOfLayers,
+  getStakersListOfLayersChanged,
   getAutocoinageData,
   updateAutocoinageData,
   getTotalSupplyLayer2,
@@ -193,7 +194,7 @@ task("display-ton-staked-amount", "Retrieve and save accounts and their staked a
   })
 
 
-  task("review-ton-staked-amount", "Retrieve and save accounts and their staked amounts")
+task("review-ton-staked-amount", "Retrieve and save accounts and their staked amounts")
   .addParam("seigManagerAddress", "Seig Manager Address")
   .addParam("accountAddress", "")
   .setAction(async ({ seigManagerAddress, accountAddress }) => {
@@ -303,6 +304,14 @@ task("get-stakers-list-layer2s", "Retrieve and save layer2 list into a file")
   .addParam("endBlockNumber", "End Block Number")
   .setAction(async ({ depositManagerAddress, startBlockNumber, endBlockNumber }) => {
     await getStakersListOfLayers(depositManagerAddress, startBlockNumber, endBlockNumber);
+  })
+
+task("get-stakers-list-layer2s-change", "Retrieve and save layer2 list into a file")
+  .addParam("depositManagerAddress", "Seig Manager Address")
+  .addParam("startBlockNumber", "Start Block Number")
+  .addParam("endBlockNumber", "End Block Number")
+  .setAction(async ({ depositManagerAddress, startBlockNumber, endBlockNumber }) => {
+    await getStakersListOfLayersChanged(depositManagerAddress, startBlockNumber, endBlockNumber);
   })
 
 

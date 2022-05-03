@@ -337,6 +337,152 @@ const getStakersListOfLayers = async (depositManagerAddress, startBlockNumber, e
 }
 
 
+const getStakersListOfLayersChanged = async (depositManagerAddress, startBlockNumber, endBlockNumber) => {
+
+  let stakers = [];
+  let layer2s = [];
+  let stakersOfLayers = {};
+  const abi = [ "event Deposited(address indexed layer2, address depositor, uint256 amount)" ];
+  const abi1 = [ "event WithdrawalRequested(address indexed layer2, address depositor, uint256 amount)" ];
+  const abi2 = [ "event WithdrawalProcessed(address indexed layer2, address depositor, uint256 amount)" ];
+  const iface = new ethers.utils.Interface(abi);
+  const iface1 = new ethers.utils.Interface(abi1);
+  const iface2 = new ethers.utils.Interface(abi2);
+
+  console.log(startBlockNumber, endBlockNumber);
+
+ // let startBlock = 10837675;
+  // let startBlock = 11817675;
+  // let endBlock = 14632601;
+  let startBlock = parseInt(startBlockNumber);
+  let endBlock = parseInt(endBlockNumber);
+
+  try{
+
+    for(let i = startBlock; i < endBlock; i += 5000) {
+
+      let filter = {
+        address: depositManagerAddress,
+        fromBlock: i,
+        toBlock: i+5000,
+        topics: [ethers.utils.id("Deposited(address,address,uint256)") ]
+      };
+
+      let filter1 = {
+        address: depositManagerAddress,
+        fromBlock: i,
+        toBlock: i+5000,
+        topics: [ethers.utils.id("WithdrawalRequested(address,address,uint256)") ]
+      };
+
+      let filter2 = {
+        address: depositManagerAddress,
+        fromBlock: i,
+        toBlock: i+5000,
+        topics: [ethers.utils.id("WithdrawalProcessed(address,address,uint256)") ]
+      };
+
+      let txs = await ethers.provider.getLogs(filter);
+      console.log(i, "Deposited length: ",  txs.length);
+      let txs1 = await ethers.provider.getLogs(filter1);
+      console.log(i, "WithdrawalRequested length: ",  txs1.length);
+      let txs2 = await ethers.provider.getLogs(filter2);
+      console.log(i, "WithdrawalProcessed length: ",  txs2.length);
+
+      txs =  txs.concat(txs1).concat(txs2);
+
+      for (const tx of txs) {
+        const { transactionHash } = tx;
+        const { logs } = await ethers.provider.getTransactionReceipt(transactionHash);
+        let foundLog0 = logs.find(el => el && el.topics && el.topics.includes(ethers.utils.id("Deposited(address,address,uint256)")));
+        let foundLog1 = logs.find(el => el && el.topics && el.topics.includes(ethers.utils.id("WithdrawalRequested(address,address,uint256)")));
+        let foundLog2 = logs.find(el => el && el.topics && el.topics.includes(ethers.utils.id("WithdrawalProcessed(address,address,uint256)")));
+
+        let matchLog = 0;
+        if(foundLog0 != null){
+          foundLog = foundLog0;
+        }
+        else if(foundLog1 != null){
+          matchLog = 1;
+          foundLog = foundLog1;
+        }
+        if(foundLog2 != null){
+          matchLog = 2;
+          foundLog = foundLog2;
+        }
+        //console.log("foundLog", matchLog, foundLog)
+
+        if (!foundLog) continue;
+
+        let parsedlog;
+        if(matchLog == 0) parsedlog = iface.parseLog(foundLog);
+        else if(matchLog == 1) parsedlog = iface1.parseLog(foundLog);
+        else if(matchLog == 2) parsedlog = iface2.parseLog(foundLog);
+
+        //console.log("parsedlog", parsedlog)
+
+        let { layer2, depositor } = parsedlog["args"];
+        //console.log(layer2, depositor)
+        depositor = depositor.toLowerCase();
+        layer2 = layer2.toLowerCase();
+
+        if(!layer2s.includes(layer2)) layer2s.push(layer2);
+        if(!stakersOfLayers[layer2])  stakersOfLayers[layer2] = [];
+        if(!stakersOfLayers[layer2].includes(depositor)) stakersOfLayers[layer2].push(depositor);
+      }
+      console.log("layer2s length: ", i, layer2s.length);
+    }
+
+    //console.log({ layer2s });
+    console.log("last layer2s length: ", layer2s.length);
+
+  } catch(error){
+    console.log('getStakersListOfLayers error',error);
+  }
+
+  const layer2sUnique1 = layer2s.filter((v, idx, self) => self.indexOf(v) === idx);
+  console.log("layer2sUnique-changed length: ", layer2sUnique1.length);
+  await fs.writeFileSync("./data/layer2s-uniq-changed.json", JSON.stringify(layer2sUnique1));
+  await fs.writeFileSync("./data/stakersOfLayers-changed.json", JSON.stringify(stakersOfLayers));
+
+  //-----
+
+  const layer2sExist = JSON.parse(await fs.readFileSync("./data/layer2s-uniq.json"));
+  let layer2sSum = layer2s.concat(layer2sExist);
+  const layer2sUnique = layer2sSum.filter((v, idx, self) => self.indexOf(v) === idx);
+  console.log("layer2sUnique-new length: ", layer2sUnique.length);
+  await fs.writeFileSync("./data/layer2s-uniq-new.json", JSON.stringify(layer2sUnique));
+  //-----
+
+  const stakersOfLayersExist = JSON.parse(await fs.readFileSync("./data/stakersOfLayers.json"));
+  let allInfo = {};
+  try{
+    for(let i=0; i< layer2sUnique.length; i++){
+      if(!stakersOfLayers[layer2sUnique[i]] && !stakersOfLayersExist[layer2sUnique[i]])
+        continue;
+
+      let out = {};
+      if(!stakersOfLayers[layer2sUnique[i]]) {
+        out = stakersOfLayersExist[layer2sUnique[i]];
+      } else if(!stakersOfLayersExist[layer2sUnique[i]]){
+        out = stakersOfLayers[layer2sUnique[i]];
+      } else {
+        out = stakersOfLayers[layer2sUnique[i]];
+        if(stakersOfLayersExist[layer2sUnique[i]]) out = out.concat(stakersOfLayersExist[layer2sUnique[i]]);
+      }
+
+      const stakersUnique = out.filter((v, idx, self) => self.indexOf(v) === idx);
+      console.log("stakersUnique length: ", layer2sUnique[i], stakersUnique.length);
+
+      allInfo[layer2sUnique[i]] = stakersUnique;
+    }
+  }catch(error){
+    console.log('stakersOfLayers error',error);
+  }
+  await fs.writeFileSync("./data/stakersOfLayers-new.json", JSON.stringify(allInfo));
+  return allInfo;
+}
+
 const getAutocoinageData = async (seigManagerAddress) => {
   const [admin] = await ethers.getSigners();
 
@@ -431,8 +577,8 @@ const getAutocoinageData = async (seigManagerAddress) => {
 const updateAutocoinageData = async (seigManagerAddress) => {
   const [admin] = await ethers.getSigners();
 
-  const layer2sUnique = JSON.parse(await fs.readFileSync("./data/layer2s-uniq-new.json"));
-  const stakersOfLayers = JSON.parse(await fs.readFileSync("./data/stakersOfLayers-new.json"));
+  const layer2sUnique = JSON.parse(await fs.readFileSync("./data/layer2s-uniq-changed.json"));
+  const stakersOfLayers = JSON.parse(await fs.readFileSync("./data/stakersOfLayers-changed.json"));
 
   const autoRefactorCoinageABI = require("../../abi/autoRefactorCoinage.json").abi;
   const seigManagerABI = require("../../abi/seigManager.json").abi;
@@ -458,7 +604,6 @@ const updateAutocoinageData = async (seigManagerAddress) => {
         if(!stakersOfLayers[layer2Address]) return;
         let accounts = stakersOfLayers[layer2Address];
         if(!accounts || accounts.length == 0) return;
-
 
         let layer2 = layer2Address;
         let coinage = seigManager["coinages"](layer2);
@@ -601,7 +746,7 @@ const updateAutocoinageData = async (seigManagerAddress) => {
       }
 
     }catch(error){
-      console.log('getAutocoinageData save error',error);
+      console.log('updateAutocoinageData save error',error);
     }
     console.log(i, 'update /data/coin-'+layer2Address+'.json');
     console.log( "=============================== ");
@@ -840,6 +985,7 @@ module.exports = {
     concatStakers,
     getAutocoinageData,
     getStakersListOfLayers,
+    getStakersListOfLayersChanged,
     getTotalSupplyLayer2,
     getBalanceLayer2Account,
     syncAutocoinageData,
