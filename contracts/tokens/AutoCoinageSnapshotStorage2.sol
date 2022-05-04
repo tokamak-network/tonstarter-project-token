@@ -61,7 +61,7 @@ contract AutoCoinageSnapshotStorage2 is AccessControl {
     mapping(address => uint256)  public currentLayer2SnapshotId;
 
     //layer2 -> snapshot -> blockNumber
-    mapping(address => mapping(uint256 => uint256))  internal blockNumberBySnapshotId;
+    //mapping(address => mapping(uint256 => uint256))  internal blockNumberBySnapshotId;
 
     //snashotAggregatorId ->
     mapping(uint256 => Layer2Snapshots)  internal snashotAggregator;

@@ -215,19 +215,33 @@ contract AutoCoinageSnapshot is AutoCoinageSnapshotStorage, DSMath {
 
     //function onSnapshotAggregator() public onlyRole(SNAPSHOT_ROLE) returns (uint256) {
     function snapshot() public returns (uint256) {
-        snashotAggregatorTotal++;
+        bool boolChange = false;
 
         uint256 numberOfLayer2s = Layer2RegistryI(layer2Registry).numLayer2s();
+        address[] memory _layer2 = new address[](numberOfLayer2s);
+        uint256[] memory _snapshotId = new uint256[](numberOfLayer2s);
+        Layer2Snapshots memory cursnapshot_ = snashotAggregator[snashotAggregatorTotal];
 
         for (uint256 i = 0; i < numberOfLayer2s; i++) {
             address layer2 = Layer2RegistryI(layer2Registry).layer2ByIndex(i);
-            if(SeigManagerI(seigManager).coinages(layer2) != address(0)){
+            uint256 id = getCurrentLayer2SnapshotId(layer2);
 
-                Layer2Snapshots storage snapshot_ = snashotAggregator[snashotAggregatorTotal];
-                snapshot_.layer2s.push(layer2);
-                snapshot_.snapshotIds.push(getCurrentLayer2SnapshotId(layer2));
+            _layer2[i] = layer2;
+            _snapshotId[i] = id;
+            if (cursnapshot_.layer2s.length != numberOfLayer2s && !boolChange) boolChange = true;
+            else if (!boolChange && cursnapshot_.layer2s[i] != layer2) boolChange = true;
+            else if (!boolChange && cursnapshot_.snapshotIds[i] != id) boolChange = true;
+        }
+
+        if (boolChange) {
+            snashotAggregatorTotal++;
+            Layer2Snapshots storage snapshot_ = snashotAggregator[snashotAggregatorTotal];
+            for (uint256 j = 0; j < _layer2.length; j++){
+                snapshot_.layer2s.push(_layer2[j]);
+                snapshot_.snapshotIds.push(_snapshotId[j]);
             }
         }
+
         return snashotAggregatorTotal;
     }
 
