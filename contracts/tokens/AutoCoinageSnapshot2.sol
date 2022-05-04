@@ -212,7 +212,6 @@ contract AutoCoinageSnapshot2 is AutoCoinageSnapshotStorage2, DSMath, IAutoCoina
 
     function _snapshot(address layer2) internal virtual returns (uint256) {
         currentLayer2SnapshotId[layer2]++;
-        // blockNumberBySnapshotId[layer2][currentLayer2SnapshotId[layer2]] = block.number;
 
         uint256 currentId = getCurrentLayer2SnapshotId(layer2);
         emit SnapshotLayer2(layer2, currentId);
@@ -816,7 +815,3 @@ contract AutoCoinageSnapshot2 is AutoCoinageSnapshotStorage2, DSMath, IAutoCoina
         return 0;
     }
 }
-
-
-
-
