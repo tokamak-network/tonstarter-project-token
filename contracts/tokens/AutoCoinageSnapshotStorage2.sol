@@ -15,13 +15,6 @@ contract AutoCoinageSnapshotStorage2 is AccessControl {
         uint256[] snapshotIds;
     }
 
-    // struct BalanceSnapshots {
-    //     uint256[] ids;
-    //     uint256[] balances;
-    //     uint256[] refactoredCounts;
-    //     uint256[] remains;
-    // }
-
     struct BalanceSnapshots {
         uint256[] ids;
         uint256[] balances;
@@ -59,9 +52,6 @@ contract AutoCoinageSnapshotStorage2 is AccessControl {
 
     // layer2 ->currentLayer2SnapshotId
     mapping(address => uint256)  public currentLayer2SnapshotId;
-
-    //layer2 -> snapshot -> blockNumber
-    //mapping(address => mapping(uint256 => uint256))  internal blockNumberBySnapshotId;
 
     //snashotAggregatorId ->
     mapping(uint256 => Layer2Snapshots)  internal snashotAggregator;

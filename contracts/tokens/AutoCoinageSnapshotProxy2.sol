@@ -13,9 +13,7 @@ contract AutoCoinageSnapshotProxy2 is
     event Upgraded(address indexed implementation);
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
 
-    /**
-     * @dev Initializes the contract by setting a `name` and a `symbol` to the token collection.
-     */
+
     constructor() {
         assert(
             IMPLEMENTATION_SLOT ==
