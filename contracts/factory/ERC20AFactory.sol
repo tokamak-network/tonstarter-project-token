@@ -9,7 +9,6 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 contract ERC20AFactory is AccessControl, IERC20Factory {
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant SNAPSHOT_ROLE = keccak256("SNAPSHOT_ROLE");
-    //bytes32 public constant DEFAULT_ADMIN_ROLE = 0x00;
     event CreatedERC20A(address contractAddress, string name, string symbol);
 
     struct ContractInfo {
@@ -27,7 +26,6 @@ contract ERC20AFactory is AccessControl, IERC20Factory {
     /// @dev constructor of ERC20AFactory
     constructor() {
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        _setupRole(MINTER_ROLE, msg.sender);
 
         totalCreatedContracts = 0;
     }
