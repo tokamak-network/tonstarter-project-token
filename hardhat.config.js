@@ -9,6 +9,8 @@ require("dotenv").config();
 require("./tasks/token-dividend-pool-deploy");
 require("./tasks/ton-stakers-info");
 require("./tasks/dao-agendas");
+require("./tasks/token-factory-deploy");
+
 
 module.exports = {
   defaultNetwork: "hardhat",
