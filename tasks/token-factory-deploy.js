@@ -9,11 +9,10 @@ task("deploy-token-factory", "Deploy tokenFactory")
     .setAction(async function ({ }) {
         const [admin] = await ethers.getSigners();
 
-
-        await hre.ethers.provider.send("hardhat_setBalance", [
-            admin.address,
-            "0x56BC75E2D63100000",
-        ]);
+        // await hre.ethers.provider.send("hardhat_setBalance", [
+        //     admin.address,
+        //     "0x56BC75E2D63100000",
+        // ]);
 
         const ERC20AFactory = await ethers.getContractFactory("ERC20AFactory");
         let erc20AFactory = await ERC20AFactory.connect(admin).deploy();
