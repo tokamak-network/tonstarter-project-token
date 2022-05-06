@@ -380,3 +380,92 @@ task("compare-layer2-staked-amount", "")
     }
 
 });
+
+
+
+
+task("display-owner-autocoinage-powerton-dividendpool", "Display the owner of autocoinage, powerton and dividendpool")
+  .addParam("autoCoinageSnapshotAddress", "autoCoinageSnapshot Address")
+  .addParam("powerTonAddress", "powerTon Address")
+  .addParam("dividendPoolAddress", "dividendPoolTon Address")
+  .addParam("ownerAddress", "Owner Address")
+  .setAction(async function ({autoCoinageSnapshotAddress, powerTonAddress, dividendPoolAddress, ownerAddress}) {
+        const [admin] = await ethers.getSigners();
+        let DEFAULT_ADMIN_ROLE = "0x0000000000000000000000000000000000000000000000000000000000000000";
+        let ADMIN_ROLE = keccak256("ADMIN_ROLE");
+
+        const autoCoinageSnapshot2 = await ethers.getContractAt("AutoCoinageSnapshot2", autoCoinageSnapshotAddress);
+        const powerTONSwapper = await ethers.getContractAt("PowerTONSwapper", powerTonAddress);
+        const tokenDividendPool = await ethers.getContractAt("TokenDividendPool", dividendPoolAddress);
+
+        let hasRoleDEFAULT_ADMIN_ROLE = await autoCoinageSnapshot2.connect(admin).hasRole(DEFAULT_ADMIN_ROLE, ownerAddress);
+        console.log("AutoCoinageSnapshot2 ownerAddress hasRole(DEFAULT_ADMIN_ROLE) :", hasRoleDEFAULT_ADMIN_ROLE);
+        let hasRoleADMIN_ROLE = await autoCoinageSnapshot2.connect(admin).hasRole(ADMIN_ROLE, ownerAddress);
+        console.log("AutoCoinageSnapshot2 ownerAddress hasRole(ADMIN_ROLE) :", hasRoleADMIN_ROLE);
+
+
+        let isAdmin0 = await powerTONSwapper.connect(admin).isAdmin(ownerAddress);
+        console.log("PowerTONSwapper ownerAddress isAdmin :", isAdmin0);
+
+        let isAdmin1 = await tokenDividendPool.connect(admin).isAdmin(ownerAddress);
+        console.log("TokenDividendPool ownerAddress isAdmin :", isAdmin1);
+
+});
+
+
+task("change-owner-autocoinage-powerton-dividendpool", "Change the owner of TokenFactory and ProjectToken")
+    .addParam("autoCoinageSnapshotAddress", "autoCoinageSnapshot Address")
+    .addParam("powerTonAddress", "powerTon Address")
+    .addParam("dividendPoolAddress", "dividendPoolTon Address")
+    .addParam("newOwnerAddress", "New Owner Address")
+    .setAction(async function ({autoCoinageSnapshotAddress, powerTonAddress, dividendPoolAddress, newOwnerAddress}) {
+
+        const [admin] = await ethers.getSigners();
+        let DEFAULT_ADMIN_ROLE = "0x0000000000000000000000000000000000000000000000000000000000000000";
+        let ADMIN_ROLE = keccak256("ADMIN_ROLE");
+
+        const autoCoinageSnapshot2 = await ethers.getContractAt("AutoCoinageSnapshotProxy2", autoCoinageSnapshotAddress);
+        const powerTONSwapper = await ethers.getContractAt("PowerTONSwapper", powerTonAddress);
+        const tokenDividendPool = await ethers.getContractAt("TokenDividendPool", dividendPoolAddress);
+
+
+        let tx = await autoCoinageSnapshot2.connect(admin).addOwner(newOwnerAddress);
+        await tx.wait();
+        console.log("AutoCoinageSnapshotProxy2 addOwner(newOwnerAddress):  tx:", tx.hash);
+
+        let tx1 = await powerTONSwapper.connect(admin).transferAdmin(newOwnerAddress);
+        await tx1.wait();
+        console.log("PowerTONSwapper transferAdmin(",newOwnerAddress,") : tx:", tx1.hash);
+
+        let tx2 = await tokenDividendPool.connect(admin).transferAdmin(newOwnerAddress);
+        await tx2.wait();
+        console.log("TokenDividendPool transferAdmin(",newOwnerAddress,") : tx:", tx1.hash);
+
+});
+
+
+
+task("renounce-owner-autocoinage", "renounce the owner of AutocoinageSnapshot2")
+    .addParam("autoCoinageSnapshotAddress", "autoCoinageSnapshot Address")
+    .setAction(async function ({autoCoinageSnapshotAddress }) {
+        const [admin] = await ethers.getSigners();
+
+        let DEFAULT_ADMIN_ROLE = "0x0000000000000000000000000000000000000000000000000000000000000000";
+        let ADMIN_ROLE = keccak256("ADMIN_ROLE");
+
+        const autoCoinageSnapshot2 = await ethers.getContractAt("AutoCoinageSnapshotProxy2", autoCoinageSnapshotAddress);
+
+        let tx1 = await autoCoinageSnapshot2.connect(admin).renounceRole(ADMIN_ROLE, admin.address);
+        console.log("AutoCoinageSnapshotProxy2 renounceRole(ADMIN_ROLE) :", tx1.hash);
+
+        let tx = await autoCoinageSnapshot2.connect(admin).renounceRole(DEFAULT_ADMIN_ROLE, admin.address);
+        console.log("ERC20AFactory renounceRole(DEFAULT_ADMIN_ROLE) :", tx.hash);
+
+        let hasRole1 = await autoCoinageSnapshot2.connect(admin).hasRole(ADMIN_ROLE, admin.address);
+        console.log("ERC20AFactory ",admin.address," hasRole(ADMIN_ROLE) :", hasRole1);
+
+        let hasRole = await autoCoinageSnapshot2.connect(admin).hasRole(DEFAULT_ADMIN_ROLE, admin.address);
+        console.log("ERC20AFactory ",admin.address," hasRole(DEFAULT_ADMIN_ROLE) :", hasRole);
+
+});
+

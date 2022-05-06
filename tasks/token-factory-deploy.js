@@ -173,4 +173,3 @@ task("renounce-owner-token", "renounce the owner of TokenFactory")
         let hasRole = await erc20AFactory.connect(admin).hasRole(DEFAULT_ADMIN_ROLE, admin.address);
         console.log("ERC20AFactory ",admin.address," hasRole(DEFAULT_ADMIN_ROLE) :", hasRole);
 });
-
