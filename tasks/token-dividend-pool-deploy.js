@@ -71,10 +71,10 @@ task("deploy-autocoinage-snapshot", "")
       const [admin] = await ethers.getSigners();
       console.log('deploy-autocoinage-snapshot2' , admin.address);
 
-        await hre.ethers.provider.send("hardhat_setBalance", [
-          admin.address,
-          "0x56BC75E2D63100000",
-        ]);
+        // await hre.ethers.provider.send("hardhat_setBalance", [
+        //   admin.address,
+        //   "0x56BC75E2D63100000",
+        // ]);
 
         try{
             const AutoCoinageSnapshot = await ethers.getContractFactory("AutoCoinageSnapshot2");
