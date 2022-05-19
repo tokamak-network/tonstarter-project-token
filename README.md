@@ -18,6 +18,18 @@ With the returned ID (snashotAggregatorId), you can inquire the balance at a spe
 ### function totalSupplyAt(uint256 snashotAggregatorId) public view returns (uint256 totalStaked)
 
 
+
+# ERC20Simple Specs.
+
+* ERC20
+* ERC165
+* EIP712
+* BURNABLE ( only hasOwned )
+* APPROVEANDCALL
+* SNAPSHOT ( only hasSnapshotRole )
+* PERMIT
+
+
 # ERC20A Specs.
 
 * ERC20
