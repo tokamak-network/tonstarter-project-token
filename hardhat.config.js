@@ -11,17 +11,16 @@ require("./tasks/ton-stakers-info");
 require("./tasks/dao-agendas");
 require("./tasks/token-factory-deploy");
 
-
 module.exports = {
   defaultNetwork: "hardhat",
   networks: {
     hardhat: {
-      chainId: 31337
+      chainId: 31337,
     },
     local: {
       chainId: 31337,
       url: `http://127.0.0.1:8545/`,
-      accounts: [`${process.env.PRIVATE_KEY}`,`${process.env.PRIVATE_KEY_2}`],
+      accounts: [`${process.env.PRIVATE_KEY}`, `${process.env.PRIVATE_KEY_2}`],
     },
     rinkeby: {
       url: `https://rinkeby.infura.io/v3/${process.env.INFURA_API_KEY}`,
@@ -31,7 +30,7 @@ module.exports = {
       url: `https://mainnet.infura.io/v3/${process.env.INFURA_API_KEY}`,
       accounts: [`${process.env.PRIVATE_KEY}`],
       gasMultiplier: 1.25,
-      gasPrice: 95000000000,
+      gasPrice: 30000000000,
     },
   },
   localhost: {
