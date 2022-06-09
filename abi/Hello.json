@@ -1,0 +1,37 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "Hello",
+  "sourceName": "contracts/stake/Hello.sol",
+  "abi": [
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "sender",
+          "type": "address"
+        }
+      ],
+      "name": "CallHello",
+      "type": "event"
+    },
+    {
+      "inputs": [],
+      "name": "hello",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x6080604052348015600f57600080fd5b5060b98061001e6000396000f3fe6080604052348015600f57600080fd5b506004361060285760003560e01c806319ff1d2114602d575b600080fd5b60336047565b604051901515815260200160405180910390f35b6040513381526000907ffb2ff15d01b6f0418fe34e6cd1e37a1de09be8dbcf78855f1e4b33705da2e54c9060200160405180910390a15060019056fea2646970667358221220d2d41a2741054479a667624c71914f009b540e72b2ce05d8116c9cb805b31f2064736f6c63430008040033",
+  "deployedBytecode": "0x6080604052348015600f57600080fd5b506004361060285760003560e01c806319ff1d2114602d575b600080fd5b60336047565b604051901515815260200160405180910390f35b6040513381526000907ffb2ff15d01b6f0418fe34e6cd1e37a1de09be8dbcf78855f1e4b33705da2e54c9060200160405180910390a15060019056fea2646970667358221220d2d41a2741054479a667624c71914f009b540e72b2ce05d8116c9cb805b31f2064736f6c63430008040033",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}

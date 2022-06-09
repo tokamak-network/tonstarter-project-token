@@ -10,6 +10,7 @@ require("./tasks/token-dividend-pool-deploy");
 require("./tasks/ton-stakers-info");
 require("./tasks/dao-agendas");
 require("./tasks/token-factory-deploy");
+require("./tasks/airdrop");
 
 module.exports = {
   defaultNetwork: "hardhat",
