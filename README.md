@@ -37,6 +37,16 @@ With the returned ID (snashotAggregatorId), you can inquire the balance at a spe
 * SNAPSHOT ( only hasSnapshotRole )
 * PERMIT
 
+# ERC20Simple Specs.
+
+* ERC20
+* ERC165
+* EIP712
+* NON-MINTERBLE
+* BURNABLE ( only hasOwned )
+* APPROVEANDCALL
+* SNAPSHOT ( only hasSnapshotRole )
+* PERMIT
 
 # ERC20A Specs.
 

@@ -8,7 +8,6 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 /// @title A factory that creates a ERC20CFactory
 contract ERC20CFactory is AccessControl, IERC20Factory {
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
-    bytes32 public constant SNAPSHOT_ROLE = keccak256("SNAPSHOT_ROLE");
     event CreatedERC20C(address contractAddress, string name, string symbol);
 
     struct ContractInfo {
@@ -48,7 +47,6 @@ contract ERC20CFactory is AccessControl, IERC20Factory {
             "token zero"
         );
 
-        token.renounceRole(SNAPSHOT_ROLE, address(this));
         token.renounceRole(MINTER_ROLE, address(this));
         token.renounceRole(DEFAULT_ADMIN_ROLE, address(this));
 
