@@ -147,7 +147,6 @@ contract PowerTONSwapper1 is
         uint256 _deadline,
         uint256 _amountOutMinimum,
         uint160 _sqrtPriceLimitX96,
-        address factory,
         uint8 slippage,
         int24 curTick
     )
@@ -156,7 +155,7 @@ contract PowerTONSwapper1 is
         //--
         if (SLIPPAGE_LIMIT == 0) SLIPPAGE_LIMIT = 10;
         require(slippage > 0 && slippage <= SLIPPAGE_LIMIT, "It is not allowed slippage.");
-        address poolAddress = getPoolAddress(factory);
+        address poolAddress = getPoolAddress();
         require(poolAddress != address(0), "pool didn't exist");
         IIUniswapV3Pool pool = IIUniswapV3Pool(poolAddress);
 
@@ -245,8 +244,9 @@ contract PowerTONSwapper1 is
         //emit OnWithdraw(layer2, account, amount);
     }
 
-    function getPoolAddress(address factory) public view returns(address) {
-         return IIUniswapV3Factory(factory).getPool(wton, address(tos), 3000);
+    function getPoolAddress() public view returns(address) {
+        address factory = 0x1F98431c8aD98523631AE4a59f267346ea31F984;
+        return IIUniswapV3Factory(factory).getPool(wton, address(tos), 3000);
     }
 
     function getDecimals(address token0, address token1) public view returns(uint256 token0Decimals, uint256 token1Decimals) {
@@ -257,8 +257,9 @@ contract PowerTONSwapper1 is
         return FullMath.mulDiv(sqrtPriceX96, sqrtPriceX96, FixedPoint96.Q96);
     }
 
-    function currentTick(address factory) public view returns(uint160 sqrtPriceX96, int24 tick) {
-        address getPool = IIUniswapV3Factory(factory).getPool(wton, address(tos), 3000);
+    function currentTick() public view returns(uint160 sqrtPriceX96, int24 tick) {
+
+        address getPool = getPoolAddress();
         if(getPool != address(0)) {
             (uint160 sqrtPriceX96, int24 tick,,,,,) =  IIUniswapV3Pool(getPool).slot0();
             return (sqrtPriceX96, tick);
