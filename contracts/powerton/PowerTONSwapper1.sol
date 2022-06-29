@@ -257,6 +257,13 @@ contract PowerTONSwapper1 is
         return FullMath.mulDiv(sqrtPriceX96, sqrtPriceX96, FixedPoint96.Q96);
     }
 
-
+    function currentTick(address factory) public view returns(uint160 sqrtPriceX96, int24 tick) {
+        address getPool = IIUniswapV3Factory(factory).getPool(wton, address(tos), 3000);
+        if(getPool != address(0)) {
+            (uint160 sqrtPriceX96, int24 tick,,,,,) =  IIUniswapV3Pool(getPool).slot0();
+            return (sqrtPriceX96, tick);
+        }
+        return (0, 0);
+    }
 
 }
