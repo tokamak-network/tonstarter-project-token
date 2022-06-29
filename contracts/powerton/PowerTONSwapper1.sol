@@ -11,6 +11,8 @@ import "../libraries/FixedPoint96.sol";
 import "../libraries/FullMath.sol";
 
 import "../libraries/TickMath.sol";
+import "../libraries/OracleLibrary.sol";
+
 
 import "../interfaces/IIERC20.sol";
 import "../interfaces/IAutoCoinageSnapshot.sol";
@@ -135,7 +137,7 @@ contract PowerTONSwapper1 is
         //--
         if (fee == 0) fee = 3000;
         if (SLIPPAGE_LIMIT == 0) SLIPPAGE_LIMIT = 100;
-        if (ACCEPT_TICK_INTERVAL == 0) ACCEPT_TICK_INTERVAL = 8;
+        if (ACCEPT_TICK_INTERVAL == 0) ACCEPT_TICK_INTERVAL = 4;
 
         require(slippage > 0 && slippage <= SLIPPAGE_LIMIT, "It is not allowed slippage.");
         address poolAddress = getPoolAddress();
@@ -145,11 +147,21 @@ contract PowerTONSwapper1 is
         (uint160 sqrtPriceX96, int24 tick,,,,,) =  pool.slot0();
         require(sqrtPriceX96 > 0, "pool is not initialized");
 
+        /*
         require(
             acceptMinTick(tick, getTickSpacing(fee)) <= curTick
             && curTick < acceptMaxTick(tick, getTickSpacing(fee)),
             "It's not allowed changed tick range."
         );
+        */
+
+        int24 timeWeightedAverageTick = OracleLibrary.consult(poolAddress, 60);
+        require(
+            acceptMinTick(timeWeightedAverageTick, getTickSpacing(fee)) <= curTick
+            && curTick < acceptMaxTick(timeWeightedAverageTick, getTickSpacing(fee)),
+            "It's not allowed changed tick range."
+        );
+
 
         uint256 price = getPriceX96FromSqrtPriceX96(sqrtPriceX96);
 
