@@ -7,8 +7,8 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { iPowerTON } from "./iPowerTON.sol";
 import "./IPowerTONSwapperEvent1.sol";
 
-import '../libraries/FixedPoint96.sol';
-import '../libraries/FullMath.sol';
+import "../libraries/FixedPoint96.sol";
+import "../libraries/FullMath.sol";
 
 import "../libraries/TickMath.sol";
 
@@ -146,8 +146,10 @@ contract PowerTONSwapper1 is
         require(sqrtPriceX96 > 0, "pool is not initialized");
 
         require(
-            acceptMinTick(fee, tick, getTickSpacing(fee)) <= curTick
-            && curTick < acceptMaxTick(fee, tick, getTickSpacing(fee)), "already tick was changed.");
+            acceptMinTick(tick, getTickSpacing(fee)) <= curTick
+            && curTick < acceptMaxTick(tick, getTickSpacing(fee)),
+            "It's not allowed changed tick range."
+        );
 
         uint256 price = getPriceX96FromSqrtPriceX96(sqrtPriceX96);
 
@@ -260,7 +262,7 @@ contract PowerTONSwapper1 is
         else if(_fee == 10000) tickSpacings = 200;
     }
 
-    function acceptMinTick(uint24 _fee, int24 _tick, int24 _tickSpacings) public returns (int24)
+    function acceptMinTick(int24 _tick, int24 _tickSpacings) public returns (int24)
     {
 
         int24 _minTick = getMiniTick(_tickSpacings);
@@ -270,7 +272,7 @@ contract PowerTONSwapper1 is
         else return _minTick;
     }
 
-    function acceptMaxTick(uint24 _fee, int24 _tick, int24 _tickSpacings) public returns (int24)
+    function acceptMaxTick(int24 _tick, int24 _tickSpacings) public returns (int24)
     {
         int24 _maxTick = getMaxTick(_tickSpacings);
         int24 _acceptMinTick = _tick + (_tickSpacings * int24(uint24(ACCEPT_TICK_INTERVAL)));
