@@ -197,10 +197,6 @@ contract PowerTONSwapper1 is
         emit Swapped(burnAmount);
     }
 
-    function getPoolAddress(address factory) public view returns(address) {
-         return IIUniswapV3Factory(factory).getPool(wton, address(tos), 3000);
-    }
-
     function getWTONBalance() public view returns(uint256) {
         return IERC20(wton).balanceOf(address(this));
     }
@@ -247,6 +243,10 @@ contract PowerTONSwapper1 is
     {
         IAutoCoinageSnapshot(autocoinageSnapshot).addSync(layer2, account);
         //emit OnWithdraw(layer2, account, amount);
+    }
+
+    function getPoolAddress(address factory) public view returns(address) {
+         return IIUniswapV3Factory(factory).getPool(wton, address(tos), 3000);
     }
 
     function getDecimals(address token0, address token1) public view returns(uint256 token0Decimals, uint256 token1Decimals) {
