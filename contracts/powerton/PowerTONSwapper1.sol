@@ -7,12 +7,14 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { iPowerTON } from "./iPowerTON.sol";
 import "./IPowerTONSwapperEvent1.sol";
 
+import "../libraries/FixedPoint128.sol";
 import "../libraries/FixedPoint96.sol";
 import "../libraries/FullMath.sol";
 
 import "../libraries/TickMath.sol";
 import "../libraries/OracleLibrary.sol";
-
+import "../libraries/Tick.sol";
+import '../libraries/LiquidityAmounts.sol';
 
 import "../interfaces/IIERC20.sol";
 import "../interfaces/IAutoCoinageSnapshot.sol";
@@ -25,6 +27,7 @@ import "../common/AccessibleCommon.sol";
 import "./PowerTONSwapperStorage.sol";
 import "./PowerTONSwapperStorage1.sol";
 
+import "hardhat/console.sol";
 
 interface I2ERC20 {
     function decimals() external view returns (uint256);
@@ -52,7 +55,8 @@ interface IIUniswapV3Pool {
             uint8 feeProtocol,
             bool unlocked
         );
-
+    function tickBitmap(int16) external view returns (uint256);
+    function ticks(int24) external view returns (Tick.Info memory);
 }
 
 contract PowerTONSwapper1 is
@@ -102,44 +106,94 @@ contract PowerTONSwapper1 is
         autocoinageSnapshot = _autocoinageSnapshot;
     }
 
-    function setSlippageLimit(uint8 slippage) external onlyOwner
+    function setAcceptTickChangeInterval(int24 _interval) external onlyOwner
     {
-        require(slippage > 0, "zero slippage");
-        require(SLIPPAGE_LIMIT != slippage, "same slippage");
-        SLIPPAGE_LIMIT = slippage;
+        require(_interval > 0, "zero");
+        require(acceptTickChangeInterval != _interval, "same");
+        acceptTickChangeInterval = _interval;
     }
 
-    function setAcceptTickInterval(uint8 tickInterval) external onlyOwner
+    function setMinimumTickInterval(int24 _interval) external onlyOwner
     {
-        require(tickInterval > 0, "zero slippage");
-        require(ACCEPT_TICK_INTERVAL != tickInterval, "same slippage");
-        ACCEPT_TICK_INTERVAL = tickInterval;
+        require(_interval > 0, "zero");
+        require(minimumTickInterval != _interval, "same");
+        minimumTickInterval = _interval;
     }
 
-    function approveToUniswap() external {
+
+    function approveToUniswap() public {
         IERC20(wton).approve(
             address(uniswapRouter),
             type(uint256).max
         );
     }
 
+
+    function getQuoteAtTick(
+        int24 tick,
+        uint128 amountIn,
+        address baseToken,
+        address quoteToken
+    ) public view returns (uint256 amountOut) {
+        return OracleLibrary.getQuoteAtTick(tick, amountIn, baseToken, quoteToken);
+    }
+
+
+    function limitPrameters(
+        uint256 amountIn,
+        address _pool,
+        address token0,
+        address token1,
+        int24 acceptTickCounts
+    ) public view returns  (uint256 amountOutMinimum, uint256 priceLimit, uint160 sqrtPriceX96Limit)
+    {
+        IIUniswapV3Pool pool = IIUniswapV3Pool(_pool);
+        //require(address(pool) != address(0), "pool didn't exist");
+
+        (uint160 sqrtPriceX96, int24 tick,,,,,) =  pool.slot0();
+        //require(sqrtPriceX96 > 0, "pool is not initialized");
+
+        int24 _tick = tick;
+        if(token0 < token1) {
+            _tick = tick - acceptTickCounts * 60;
+            if(_tick < TickMath.MIN_TICK ) _tick =  TickMath.MIN_TICK ;
+        } else {
+            _tick = tick + acceptTickCounts * 60;
+            if(_tick > TickMath.MAX_TICK ) _tick =  TickMath.MAX_TICK ;
+        }
+        address token1_ = token1;
+        address token0_ = token0;
+        return (
+              getQuoteAtTick(
+                _tick,
+                uint128(amountIn),
+                token0_,
+                token1_
+                ),
+             getQuoteAtTick(
+                _tick,
+                uint128(10**27),
+                token0_,
+                token1_
+             ),
+             TickMath.getSqrtRatioAtTick(_tick)
+        );
+    }
+
     function swap(
-        uint256 _amountIn,
-        uint256 _amountOutMinimum,
-        uint160 _sqrtPriceLimitX96,
-        uint8 slippage,
-        int24 curTick
+        uint256 _amountIn
     )
         external
     {
         require(_amountIn <= getWTONBalance(), "wton is insufficient");
 
-        //--
-        if (fee == 0) fee = 3000;
-        if (SLIPPAGE_LIMIT == 0) SLIPPAGE_LIMIT = 100;
-        if (ACCEPT_TICK_INTERVAL == 0) ACCEPT_TICK_INTERVAL = 4;
+        if (IERC20(wton).allowance(address(this), address(uniswapRouter)) < _amountIn) {
+            approveToUniswap();
+        }
 
-        require(slippage > 0 && slippage <= SLIPPAGE_LIMIT, "It is not allowed slippage.");
+        if (acceptTickChangeInterval == 0) acceptTickChangeInterval = 8;
+        if (minimumTickInterval == 0) minimumTickInterval = 18;
+
         address poolAddress = getPoolAddress();
         require(poolAddress != address(0), "pool didn't exist");
         IIUniswapV3Pool pool = IIUniswapV3Pool(poolAddress);
@@ -147,52 +201,39 @@ contract PowerTONSwapper1 is
         (uint160 sqrtPriceX96, int24 tick,,,,,) =  pool.slot0();
         require(sqrtPriceX96 > 0, "pool is not initialized");
 
-        /*
+        int24 timeWeightedAverageTick = OracleLibrary.consult(poolAddress, 120);
         require(
-            acceptMinTick(tick, getTickSpacing(fee)) <= curTick
-            && curTick < acceptMaxTick(tick, getTickSpacing(fee)),
-            "It's not allowed changed tick range."
-        );
-        */
-
-        int24 timeWeightedAverageTick = OracleLibrary.consult(poolAddress, 60);
-        require(
-            acceptMinTick(timeWeightedAverageTick, getTickSpacing(fee)) <= curTick
-            && curTick < acceptMaxTick(timeWeightedAverageTick, getTickSpacing(fee)),
+            acceptMinTick(timeWeightedAverageTick, 60) <= tick
+            && tick < acceptMaxTick(timeWeightedAverageTick, 60),
             "It's not allowed changed tick range."
         );
 
+        (uint256 amountOutMinimum, uint256 priceLimit, uint160 sqrtPriceX96Limit)
+            = limitPrameters(_amountIn, poolAddress, wton, address(tos), minimumTickInterval);
 
-        uint256 price = getPriceX96FromSqrtPriceX96(sqrtPriceX96);
 
-        // ---
         ISwapRouter.ExactInputSingleParams memory params =
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: wton,
                 tokenOut: address(tos),
-                fee: fee,
+                fee: 3000,
                 recipient: address(this),
-                deadline: block.timestamp + 1000,
+                deadline: block.timestamp + 20,
                 amountIn: _amountIn,
-                amountOutMinimum: _amountOutMinimum,
-                sqrtPriceLimitX96: _sqrtPriceLimitX96
+                amountOutMinimum: amountOutMinimum,
+                sqrtPriceLimitX96: sqrtPriceX96Limit
             });
 
         uint256 amountOut = ISwapRouter(uniswapRouter).exactInputSingle(params);
         emit Swapped(_amountIn, amountOut);
+        console.log("_amountIn %s", _amountIn);
+        console.log("amountOut %s", amountOut);
 
-        //--
-        (uint160 sqrtPriceX961,,,,,,) =  pool.slot0();
-        uint256 price1 = getPriceX96FromSqrtPriceX96(sqrtPriceX961);
-
-        uint256 lower = price * ( 1000 - (uint256(slippage) * 1000 / 200) ) / 1000 ;
-        uint256 upper = price * ( 1000 + (uint256(slippage) * 1000 / 200) ) / 1000 ;
-
-        require(lower <= price1 && price1 < upper, "out of acceptable price range");
-
-        //--
         uint256 burnAmount = tos.balanceOf(address(this));
         tos.burn(address(this), burnAmount);
+        console.log("burnAmount %s", burnAmount);
+
+
         emit Burned(burnAmount);
     }
 
@@ -278,7 +319,7 @@ contract PowerTONSwapper1 is
     {
 
         int24 _minTick = getMiniTick(_tickSpacings);
-        int24 _acceptMinTick = _tick - (_tickSpacings * int24(uint24(ACCEPT_TICK_INTERVAL)));
+        int24 _acceptMinTick = _tick - (_tickSpacings * int24(uint24(acceptTickChangeInterval)));
 
         if(_minTick < _acceptMinTick) return _acceptMinTick;
         else return _minTick;
@@ -287,7 +328,7 @@ contract PowerTONSwapper1 is
     function acceptMaxTick(int24 _tick, int24 _tickSpacings) public returns (int24)
     {
         int24 _maxTick = getMaxTick(_tickSpacings);
-        int24 _acceptMinTick = _tick + (_tickSpacings * int24(uint24(ACCEPT_TICK_INTERVAL)));
+        int24 _acceptMinTick = _tick + (_tickSpacings * int24(uint24(acceptTickChangeInterval)));
 
         if(_maxTick < _acceptMinTick) return _maxTick;
         else return _acceptMinTick;

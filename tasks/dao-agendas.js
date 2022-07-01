@@ -176,6 +176,34 @@ task("get-power-ton", "")
     });
 
 
+task("get-power-ton-rate", "")
+    .addParam("seigManagerAddress", "")
+    .addParam("wtonAddress", "")
+    .setAction(async ({ seigManagerAddress, wtonAddress }) => {
+        const seigManagerABI = JSON.parse(await fs.readFileSync("./abi/seigManager.json")).abi;
+        const seigManager = new ethers.Contract(
+            seigManagerAddress,
+            seigManagerABI,
+            ethers.provider
+        );
+        const powerTONSeigRate = await seigManager.powerTONSeigRate();
+        console.log("powerTONSeigRate :", powerTONSeigRate.toString());
+
+        const powerTon = await seigManager.powerton();
+        console.log("powerTon :", powerTon);
+        console.log("wtonAddress :", wtonAddress);
+        const wtonABI = JSON.parse(await fs.readFileSync("./abi/WTON.json")).abi;
+        const wton = new ethers.Contract(
+            wtonAddress,
+            wtonABI,
+            ethers.provider
+        );
+
+        let balanceWton = await wton["balanceOf(address)"](powerTon);
+        console.log("balanceWton :", balanceWton);
+    });
+
+
 
 
 task("get-stake-ton-of-seig-manager", "")
