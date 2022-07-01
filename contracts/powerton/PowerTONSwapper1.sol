@@ -120,6 +120,12 @@ contract PowerTONSwapper1 is
         minimumTickInterval = _interval;
     }
 
+    function setTWAP_PERIOD(uint32 value) external onlyOwner
+    {
+        require(value > 0, "zero");
+        require(TWAP_PERIOD != value, "same");
+        TWAP_PERIOD = value;
+    }
 
     function approveToUniswap() public {
         IERC20(wton).approve(
@@ -193,6 +199,7 @@ contract PowerTONSwapper1 is
 
         if (acceptTickChangeInterval == 0) acceptTickChangeInterval = 8;
         if (minimumTickInterval == 0) minimumTickInterval = 18;
+        if (TWAP_PERIOD == 0) TWAP_PERIOD = 120;
 
         address poolAddress = getPoolAddress();
         require(poolAddress != address(0), "pool didn't exist");
@@ -201,7 +208,7 @@ contract PowerTONSwapper1 is
         (uint160 sqrtPriceX96, int24 tick,,,,,) =  pool.slot0();
         require(sqrtPriceX96 > 0, "pool is not initialized");
 
-        int24 timeWeightedAverageTick = OracleLibrary.consult(poolAddress, 120);
+        int24 timeWeightedAverageTick = OracleLibrary.consult(poolAddress, TWAP_PERIOD);
         require(
             acceptMinTick(timeWeightedAverageTick, 60) <= tick
             && tick < acceptMaxTick(timeWeightedAverageTick, 60),
@@ -218,7 +225,7 @@ contract PowerTONSwapper1 is
                 tokenOut: address(tos),
                 fee: 3000,
                 recipient: address(this),
-                deadline: block.timestamp + 20,
+                deadline: block.timestamp + 30,
                 amountIn: _amountIn,
                 amountOutMinimum: amountOutMinimum,
                 sqrtPriceLimitX96: sqrtPriceX96Limit
