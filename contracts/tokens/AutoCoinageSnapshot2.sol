@@ -724,7 +724,7 @@ contract AutoCoinageSnapshot2 is AutoCoinageSnapshotStorage2, DSMath, IAutoCoina
     /// @inheritdoc IAutoCoinageSnapshot2
     function totalSupply(address layer2) public view override returns (uint256)
     {
-        return totalSupplyAt(layer2, getCurrentLayer2SnapshotId(layer2));
+        return totalSupplyAt(layer2, 0);
     }
 
     /// @inheritdoc IAutoCoinageSnapshot2
