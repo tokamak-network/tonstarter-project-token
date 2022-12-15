@@ -18,7 +18,7 @@ async function main() {
   console.log("tx:", tx.deployTransaction.hash);
   console.log("projectTokenProxy deployed to:", projectTokenProxy.address);
 
-  await (await projectTokenProxy.connect(admin).upgradeTo("로직주소")).wait();
+  // await (await projectTokenProxy.connect(admin).upgradeTo("로직주소")).wait();
 
   // projectTokenProxy deployed to: 0x0525e7040c71fb6692324AA270788DEa41Eb0129
   await run("verify", {
