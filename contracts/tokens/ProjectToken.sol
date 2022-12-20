@@ -392,7 +392,8 @@ contract ProjectToken is ProjectTokenStorage, IERC721, IERC721Metadata, IERC721E
     }
 
 
-    function burn(address owner_, uint256 tokenId)  external {
+    function burn(address owner_, uint256 tokenId) external {
+        require(owner_ == msg.sender, "ProjectToken: burn of token that is not own");
         _burn(owner_, tokenId);
         _removeTokenFromOwnerEnumeration(owner_, tokenId);
         // Since tokenId will be deleted, we can clear its slot in _ownedTokensIndex to trigger a gas refund
