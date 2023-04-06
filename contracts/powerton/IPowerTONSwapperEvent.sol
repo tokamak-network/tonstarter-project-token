@@ -10,4 +10,5 @@ interface IPowerTONSwapperEvent
         uint256 amount
     );
 
+    event Distributed(address token, uint256 amount);
 }
