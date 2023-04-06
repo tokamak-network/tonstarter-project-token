@@ -391,7 +391,7 @@ contract ProjectToken is ProjectTokenStorage, IERC721, IERC721Metadata, IERC721E
         return (spender == owner_ || getApproved(tokenId) == spender || isApprovedForAll(owner_, spender));
     }
 
-
+    /*
     function burn(address owner_, uint256 tokenId)  external {
         _burn(owner_, tokenId);
         _removeTokenFromOwnerEnumeration(owner_, tokenId);
@@ -399,7 +399,7 @@ contract ProjectToken is ProjectTokenStorage, IERC721, IERC721Metadata, IERC721E
         _ownedTokensIndex[tokenId] = 0;
         _removeTokenFromAllTokensEnumeration(tokenId);
     }
-
+    */
 
     /**
      * @dev Destroys `tokenId`.
