@@ -391,7 +391,7 @@ contract ProjectToken is ProjectTokenStorage, IERC721, IERC721Metadata, IERC721E
         return (spender == owner_ || getApproved(tokenId) == spender || isApprovedForAll(owner_, spender));
     }
 
-
+    /*
     function burn(address owner_, uint256 tokenId)  external {
         _burn(owner_, tokenId);
         _removeTokenFromOwnerEnumeration(owner_, tokenId);
@@ -400,17 +400,6 @@ contract ProjectToken is ProjectTokenStorage, IERC721, IERC721Metadata, IERC721E
         _removeTokenFromAllTokensEnumeration(tokenId);
     }
 
-
-    /**
-     * @dev Destroys `tokenId`.
-     * The approval is cleared when the token is burned.
-     *
-     * Requirements:
-     *
-     * - `tokenId` must exist.
-     *
-     * Emits a {Transfer} event.
-     */
     function _burn(address owner_, uint256 tokenId) internal virtual{
         require(ownerOf(tokenId) == owner_, "ProjectToken: burn of token that is not own");
         _beforeTokenTransfer(owner_, address(0), tokenId);
@@ -421,6 +410,7 @@ contract ProjectToken is ProjectTokenStorage, IERC721, IERC721Metadata, IERC721E
 
         emit Transfer(owner_, address(0), tokenId);
     }
+    */
 
     function mint(string calldata tokenURI_) external {
         uint256 tokenId = totalSupply();
