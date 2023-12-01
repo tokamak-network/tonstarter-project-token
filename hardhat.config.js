@@ -37,6 +37,11 @@ module.exports = {
       accounts: [`${process.env.PRIVATE_KEY}`],
       chainId: 17000,
     },
+    sepolia: {
+      url: `https://sepolia.infura.io/v3/${process.env.InfuraKey}`,
+      accounts: [`${process.env.ACCOUNT0_PK}`],
+      chainId: 11155111,
+    },
   },
   localhost: {
     timeout: 100000000,
@@ -47,6 +52,7 @@ module.exports = {
       rinkeby: `${process.env.ETHERSCAN_API_KEY}`,
       goerli: `${process.env.ETHERSCAN_API_KEY}`,
       holesky: `${process.env.ETHERSCAN_API_KEY}`,
+      sepolia: `${process.env.ETHERSCAN_API_KEY}`,
     },
     customChains: [
       {
