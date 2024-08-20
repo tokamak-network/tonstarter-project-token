@@ -1,0 +1,10 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "PowerTONSwapperStorage1",
+  "sourceName": "contracts/powerton/PowerTONSwapperStorage1.sol",
+  "abi": [],
+  "bytecode": "0x6080604052348015600f57600080fd5b50603f80601d6000396000f3fe6080604052600080fdfea26469706673582212204b692b190e63fa7b4b8eeba97569b88649ba22f15cbc91d98d80f0b56df297c264736f6c63430008040033",
+  "deployedBytecode": "0x6080604052600080fdfea26469706673582212204b692b190e63fa7b4b8eeba97569b88649ba22f15cbc91d98d80f0b56df297c264736f6c63430008040033",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}

@@ -1,0 +1,115 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "PowerTONSwapperStorage",
+  "sourceName": "contracts/powerton/PowerTONSwapperStorage.sol",
+  "abi": [
+    {
+      "inputs": [],
+      "name": "autocoinageSnapshot",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "layer2Registry",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "migratedL2",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "pauseProxy",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "seigManager",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "tos",
+      "outputs": [
+        {
+          "internalType": "contract ITOS",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "uniswapRouter",
+      "outputs": [
+        {
+          "internalType": "contract ISwapRouter",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "wton",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x608060405234801561001057600080fd5b50610178806100206000396000f3fe608060405234801561001057600080fd5b50600436106100785760003560e01c8063309d72731461007d57806363a8fd89146100ad5780636fb7f558146100ca578063735de9f7146100dd57806389f395de146100f05780638d62d94914610103578063a1f5f50e1461011b578063cf2a239c1461012f575b600080fd5b600354610090906001600160a01b031681565b6040516001600160a01b0390911681526020015b60405180910390f35b6000546100ba9060ff1681565b60405190151581526020016100a4565b600554610090906001600160a01b031681565b600254610090906001600160a01b031681565b600154610090906001600160a01b031681565b6000546100909061010090046001600160a01b031681565b6005546100ba90600160a01b900460ff1681565b600454610090906001600160a01b03168156fea2646970667358221220c5e620bb8cc76972b07ffacb14320fbbeae0297b602fad81c3e7afde01e9923464736f6c63430008040033",
+  "deployedBytecode": "0x608060405234801561001057600080fd5b50600436106100785760003560e01c8063309d72731461007d57806363a8fd89146100ad5780636fb7f558146100ca578063735de9f7146100dd57806389f395de146100f05780638d62d94914610103578063a1f5f50e1461011b578063cf2a239c1461012f575b600080fd5b600354610090906001600160a01b031681565b6040516001600160a01b0390911681526020015b60405180910390f35b6000546100ba9060ff1681565b60405190151581526020016100a4565b600554610090906001600160a01b031681565b600254610090906001600160a01b031681565b600154610090906001600160a01b031681565b6000546100909061010090046001600160a01b031681565b6005546100ba90600160a01b900460ff1681565b600454610090906001600160a01b03168156fea2646970667358221220c5e620bb8cc76972b07ffacb14320fbbeae0297b602fad81c3e7afde01e9923464736f6c63430008040033",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}
